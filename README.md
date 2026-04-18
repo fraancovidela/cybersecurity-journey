@@ -14,7 +14,7 @@ Acá vas a encontrar mis notas, write-ups y scripts a medida que avanzo.
 ## 📈 Progreso semanal
 | Semana | Tema | Estado |
 |--------|------|--------|
-| 01 | Fundamentos de redes | 🔄 En curso |
+| 01 | Procesos y red en Linux | 🔄 En curso |
 
 ## 📁 Estructura del repositorio
 | Carpeta | Contenido |
