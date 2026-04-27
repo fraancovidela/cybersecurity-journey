@@ -27,8 +27,8 @@ Acá vas a encontrar mis notas, write-ups y scripts a medida que avanzo.
 |--------|------|--------|
 | 01-04 | Redes, Linux, OverTheWire, Escalada de privilegios | ✅ Completado |
 | 05 | Procesos y red en Linux | ✅ Completado |
-| 06-07 | Análisis de logs, SSH Brute Force, Bash scripting, Script detector | ✅ Completado |
-| 08 | Fail2Ban | 🔄 En curso |
+| 06 | Análisis de logs, SSH Brute Force, Bash scripting, Script detector | ✅ Completado |
+| 07 | Fail2Ban | 🔄 En curso |
 
 ## 📁 Estructura del repositorio
 | Carpeta | Contenido |
