@@ -13,15 +13,22 @@ Acá vas a encontrar mis notas, write-ups y scripts a medida que avanzo.
 - OverTheWire (Bandit) — Linux challenges
 - Escalada de privilegios
 - Triaje de sistemas — checklist de análisis
+- Análisis de logs (`/var/log/auth.log`, `journalctl`, timeline thinking)
+- SSH Brute Force — simulación y detección
+- Bash scripting aplicado a seguridad
+- Script detector automático con umbrales, bloqueo UFW y notificaciones por email
+- Automatización de tareas de seguridad con cron
 
 ## 🔍 Estudiando ahora
-- Procesos y red en Linux — triaje y análisis
+- Fail2Ban — herramienta profesional de detección y bloqueo automático
 
-## 📈 Progreso semanal
+## 📝 Progreso semanal
 | Semana | Tema | Estado |
 |--------|------|--------|
 | 01-04 | Redes, Linux, OverTheWire, Escalada de privilegios | ✅ Completado |
-| 05 | Procesos y red en Linux | 🔄 En curso |
+| 05 | Procesos y red en Linux | ✅ Completado |
+| 06-07 | Análisis de logs, SSH Brute Force, Bash scripting, Script detector | ✅ Completado |
+| 08 | Fail2Ban | 🔄 En curso |
 
 ## 📁 Estructura del repositorio
 | Carpeta | Contenido |
