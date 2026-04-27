@@ -12,6 +12,7 @@ Acá vas a encontrar mis notas, write-ups y scripts a medida que avanzo.
 - Análisis de procesos y correlación con red
 - OverTheWire (Bandit) — Linux challenges
 - Escalada de privilegios
+- Procesos y redes en Linux
 - Triaje de sistemas — checklist de análisis
 - Script de triaje de seguridad — procesos, red, SUID y persistencia con reporte por email
 - Análisis de logs (`/var/log/auth.log`, `journalctl`, timeline thinking)
