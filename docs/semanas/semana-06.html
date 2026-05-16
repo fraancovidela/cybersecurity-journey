@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Semana 06 — Forense de logs y detección activa · franco videla</title>
+<link rel="stylesheet" href="../fv-design.css"/>
+<style>
+  .site-main { padding: 56px; max-width: 1100px; margin: 0 auto; }
+ 
+  .article-meta {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    font-family: var(--ff-mono); font-size: 11.5px;
+    color: var(--ink-500); text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 18px;
+  }
+  .article-meta .sep { color: var(--paper-300); }
+ 
+  .article h1 {
+    font-family: var(--ff-display); font-weight: 400;
+    font-size: 56px; line-height: 1.04; letter-spacing: -0.015em;
+    margin: 0 0 18px; color: var(--ink-900); max-width: 22ch;
+  }
+  .article h1 .it { font-style: italic; color: var(--amber-700); }
+  .article .lede {
+    font-size: 19px; color: var(--ink-700); line-height: 1.5;
+    max-width: 62ch; margin: 0 0 40px;
+  }
+  .article-body {
+    display: grid; grid-template-columns: 200px 1fr; gap: 56px;
+  }
+  .toc {
+    position: sticky; top: 90px; align-self: start;
+    font-family: var(--ff-mono); font-size: 12px; color: var(--ink-500);
+  }
+  .toc .lbl {
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-900); font-weight: 600;
+    border-bottom: 1px solid var(--paper-300);
+    padding-bottom: 8px; margin-bottom: 12px;
+  }
+  .toc ol { list-style: none; padding: 0; margin: 0; counter-reset: tocnum; display: grid; gap: 8px; }
+  .toc li { counter-increment: tocnum; }
+  .toc li::before { content: counter(tocnum, decimal-leading-zero) "  "; color: var(--ink-300); }
+  .toc a { color: var(--ink-700); text-decoration: none; }
+  .toc a:hover { color: var(--amber-700); }
+ 
+  .sign-off {
+    margin-top: 32px; font-family: var(--ff-display);
+    font-size: 22px; color: var(--ink-900); font-style: italic;
+  }
+ 
+  .nav-week {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 24px 56px; border-top: 1px solid var(--paper-200);
+    font-family: var(--ff-mono); font-size: 12px;
+  }
+  .nav-week a { color: var(--amber-700); text-decoration: none; }
+  .nav-week a:hover { color: var(--amber-500); }
+ 
+  @media (max-width: 900px) {
+    .site-header { padding: 16px 24px; }
+    .site-main { padding: 32px 24px; }
+    .article h1 { font-size: 36px; }
+    .article-body { grid-template-columns: 1fr; }
+    .toc { position: static; }
+    .nav-week { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+ 
+<!-- HEADER -->
+<header class="site-header">
+  <a href="../index.html" class="lockup">
+    <svg width="32" height="32" viewBox="0 0 120 120" aria-hidden="true">
+      <defs><clipPath id="c"><path d="M0 0 H96 L120 24 V120 H0 Z"/></clipPath></defs>
+      <g clip-path="url(#c)">
+        <rect width="120" height="120" fill="#14110C"/>
+        <text x="60" y="78" font-family="Instrument Serif, serif" font-size="62" font-style="italic" fill="#FBF8F2" text-anchor="middle">fv</text>
+        <rect x="14" y="100" width="14" height="3" fill="#C57318"/>
+      </g>
+    </svg>
+    <span class="wordmark">franco videla</span>
+  </a>
+  <nav class="site-nav">
+    <a href="../index.html" class="active">notas</a>
+    <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank">github</a>
+    <a href="https://linkedin.com/in/fraancovidela" target="_blank">linkedin</a>
+    <a href="https://tryhackme.com/p/fraancovidela" target="_blank">tryhackme</a>
+  </nav>
+  <span class="site-status"><span class="dot"></span>semana 07 en curso</span>
+</header>
+ 
+<!-- ARTICLE -->
+<main class="site-main">
+  <article class="article">
+    <div class="article-meta">
+      <span>Semana 06</span>
+      <span class="sep">/</span>
+      <span>Forense · Detección · Bash</span>
+    </div>
+ 
+    <h1>Forense de logs y <span class="it">detección activa.</span></h1>
+    <p class="lede">Esta semana pasé de analizar cosas en modo lectura a construir herramientas que detectan cosas solas. La diferencia es más grande de lo que esperaba.</p>
+ 
+    <div class="article-body">
+      <nav class="toc">
+        <div class="lbl">En esta nota</div>
+        <ol>
+          <li><a href="#backdoor">Backdoor en tiempo real</a></li>
+          <li><a href="#triage">Script de triaje</a></li>
+          <li><a href="#logs">Forense de logs</a></li>
+          <li><a href="#ssh">SSH brute force</a></li>
+          <li><a href="#conceptos">Conceptos clave</a></li>
+          <li><a href="#confusiones">Lo que no entendía</a></li>
+          <li><a href="#pendiente">Pregunta pendiente</a></li>
+        </ol>
+      </nav>
+ 
+      <div class="prose">
+ 
+        <h2 id="backdoor"><span class="num">§ 01</span>Backdoor en tiempo real</h2>
+        <p>Arranqué la semana simulando un proceso malicioso con <code class="inline">nc -lvnp 9999</code> en mi VM. El objetivo era encontrarlo como si no supiera que estaba ahí. Usé <code class="inline">lsof -i :9999</code> para identificar el proceso dueño del puerto, tracé el árbol de padres con <code class="inline">ps auxf</code>, e inspeccioné el binario real via <code class="inline">/proc/&lt;PID&gt;/exe</code>.</p>
+        <p>Algo que me llamó la atención: el proceso aparecía dos veces en <code class="inline">ss</code>. Tardé un rato en entender por qué. Resulta que tenía dos file descriptors simultáneos — <code class="inline">fd=3</code> para seguir escuchando nuevas conexiones y <code class="inline">fd=4</code> para mantener la conexión activa. Una vez que lo vi así, tuvo sentido.</p>
+ 
+        <div class="code-block">
+          <div class="code-head">
+            <div style="display:flex; gap:14px; align-items:center;">
+              <div class="dots"><span></span><span></span><span></span></div>
+              <span class="file">~/scripts/<b>triage-rapido.sh</b></span>
+            </div>
+            <span class="lang">bash</span>
+          </div>
+          <div class="code-body">
+            <div class="gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+            <div class="lines"><span class="ln"><span class="tok-cmt"># detectar proceso dueño de un puerto específico</span></span><span class="ln"><span class="tok-fn">lsof</span> -i :<span class="tok-num">9999</span></span><span class="ln"></span><span class="ln"><span class="tok-cmt"># inspeccionar el binario real detrás del PID</span></span><span class="ln"><span class="tok-fn">ls</span> -la /proc/<span class="tok-var">&lt;PID&gt;</span>/exe</span><span class="ln"><span class="tok-fn">cat</span> /proc/<span class="tok-var">&lt;PID&gt;</span>/cmdline</span></div>
+          </div>
+        </div>
+ 
+        <h2 id="triage"><span class="num">§ 02</span>Script de triaje</h2>
+        <p>Construí <code class="inline">triage.sh</code> desde cero. Revisa procesos por CPU, conexiones establecidas, ejecutables en <code class="inline">/tmp</code>, binarios SUID y persistencia en cron. Al final genera un reporte con timestamp y lo manda por email via <code class="inline">msmtp</code>.</p>
+        <p>El problema más frustrante fue un loop infinito que aparecía cuando intenté que el script se llamara a sí mismo desde dentro. La solución fue reorganizar todo en funciones internas — una por cada área de análisis — y llamarlas secuencialmente desde un <code class="inline">main()</code>.</p>
+ 
+        <div class="callout">
+          <span class="lbl">↳ Aprendizaje de diseño</span>
+          Las credenciales viven en archivos con <code class="inline">chmod 600</code>, nunca hardcodeadas en el script. Parece obvio escrito así, pero es fácil ignorarlo cuando estás probando rápido.
+        </div>
+ 
+        <h2 id="logs"><span class="num">§ 03</span>Forense de logs</h2>
+        <p>Generé evidencia real en mi Ubuntu 24.04 — intentos fallidos de sudo, acceso a <code class="inline">/etc/shadow</code> — y la rastreé en <code class="inline">auth.log</code> y <code class="inline">journalctl</code> hasta construir una timeline completa del incidente.</p>
+        <p>Un detalle que no esperaba: <code class="inline">grep</code> en logs modernos de Ubuntu devolvía "coincidencia en fichero binario" sin resultados. Ubuntu 24.04 escribe partes binarias en los logs. Se resuelve agregando <code class="inline">-a</code> al grep, o usando <code class="inline">journalctl</code> directamente.</p>
+ 
+        <div class="code-block">
+          <div class="code-head">
+            <div style="display:flex; gap:14px; align-items:center;">
+              <div class="dots"><span></span><span></span><span></span></div>
+              <span class="file">/var/log/<b>auth.log</b></span>
+            </div>
+            <span class="lang">bash</span>
+          </div>
+          <div class="code-body">
+            <div class="gutter"><span>1</span><span>2</span><span>3</span><span>4</span></div>
+            <div class="lines"><span class="ln"><span class="tok-cmt"># buscar en logs con partes binarias</span></span><span class="ln"><span class="tok-fn">grep</span> -aE <span class="tok-str">"Failed|Invalid"</span> /var/log/auth.log</span><span class="ln"></span><span class="ln"><span class="tok-fn">journalctl</span> --since <span class="tok-str">"2026-05-01"</span> --until <span class="tok-str">"2026-05-02"</span></span></div>
+          </div>
+        </div>
+ 
+        <h2 id="ssh"><span class="num">§ 04</span>SSH brute force + detector</h2>
+        <p>Simulé 200 intentos de login fallidos contra mi VM con un loop <code class="inline">for</code> + <code class="inline">ssh</code>. Después construí el script detector: extrae IPs con <code class="inline">awk</code>, cuenta intentos con <code class="inline">uniq -c</code>, bloquea automáticamente via <code class="inline">ufw deny</code> al superar el umbral, y notifica por email. Lo automaticé con cron corriendo cada 5 minutos.</p>
+        <p>El problema más raro de toda la semana: el email funcionaba perfecto ejecutado manualmente, pero desde cron no salía nada. Estuve un buen rato dando vueltas hasta que entendí que cron hereda el entorno del usuario que lo ejecuta — y <code class="inline">msmtp</code> busca su configuración en <code class="inline">$HOME/.msmtprc</code>. Mover la tarea al crontab de root solucionó todo.</p>
+ 
+        <div class="code-block">
+          <div class="code-head">
+            <div style="display:flex; gap:14px; align-items:center;">
+              <div class="dots"><span></span><span></span><span></span></div>
+              <span class="file">~/scripts/<b>ssh-brute-detector.sh</b></span>
+            </div>
+            <span class="lang">bash</span>
+          </div>
+          <div class="code-body">
+            <div class="gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div>
+            <div class="lines"><span class="ln"><span class="tok-cmt"># extraer IPs con más de N intentos fallidos</span></span><span class="ln"><span class="tok-fn">grep</span> <span class="tok-str">"Failed password"</span> /var/log/auth.log \</span><span class="ln">  | <span class="tok-fn">awk</span> <span class="tok-str">'{print $11}'</span> \</span><span class="ln">  | <span class="tok-fn">sort</span> | <span class="tok-fn">uniq</span> -c | <span class="tok-fn">sort</span> -rn \</span><span class="ln">  | <span class="tok-fn">awk</span> <span class="tok-str">'$1 &gt; 10 {print $2}'</span></span><span class="ln"></span><span class="ln"><span class="tok-cmt"># bloquear IP con UFW</span></span><span class="ln"><span class="tok-fn">ufw</span> deny from <span class="tok-var">$IP</span></span><span class="ln"><span class="tok-fn">ufw</span> delete deny from <span class="tok-var">$IP</span>  <span class="tok-cmt"># para desbloquear</span></span></div>
+          </div>
+        </div>
+ 
+        <h2 id="conceptos"><span class="num">§ 05</span>Conceptos clave</h2>
+        <p><strong>Separar código de configuración</strong> es lo más importante que me llevé de esta semana. Las credenciales en archivos con permisos restringidos, nunca en el script. Cada proceso hereda el entorno del usuario que lo lanza — eso explica el 80% de los problemas raros con scripts automatizados.</p>
+        <p><strong>Baseline.</strong> Saber qué es normal en un sistema — como <code class="inline">sysstat</code> corriendo como root cada 10 minutos — es el prerequisito para identificar qué es realmente anómalo. Sin eso, cualquier proceso legítimo parece sospechoso y terminás investigando ruido.</p>
+ 
+        <h2 id="confusiones"><span class="num">§ 06</span>Lo que no entendía al principio</h2>
+ 
+        <table class="confusion-table">
+          <thead><tr><th>Confusión</th><th>Cómo lo resolví</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Por qué excluir loopback al buscar conexiones sospechosas</td>
+              <td>El loopback es tráfico interno que nunca sale a la red — no representa amenaza externa</td>
+            </tr>
+            <tr>
+              <td>Por qué el mismo PID aparece dos veces en <code class="inline">ss</code></td>
+              <td>Tiene dos file descriptors: fd=3 escucha, fd=4 mantiene la conexión activa</td>
+            </tr>
+            <tr>
+              <td>Por qué un virus sigue corriendo si borrás el ejecutable</td>
+              <td>El proceso ya está cargado en RAM; usa cron para reaparecer al reiniciar</td>
+            </tr>
+            <tr>
+              <td>Por qué <code class="inline">grep</code> devolvía "coincidencia en fichero binario"</td>
+              <td>Ubuntu 24.04 escribe logs con partes binarias — se resuelve con <code class="inline">-a</code></td>
+            </tr>
+            <tr>
+              <td>Por qué el email funcionaba manual pero no desde cron</td>
+              <td>Cron hereda el entorno del usuario ejecutor — mover a crontab de root solucionó el acceso a <code class="inline">.msmtprc</code></td>
+            </tr>
+          </tbody>
+        </table>
+ 
+        <h2 id="pendiente"><span class="num">§ 07</span>Pregunta pendiente</h2>
+        <p>¿Cómo hace Fail2Ban para bloquear IPs automáticamente por tiempo limitado y desbloquearlas solas sin intervención humana? Lo que armé esta semana bloquea, pero no desbloquea solo — Fail2Ban claramente resuelve eso de una forma más elegante.</p>
+ 
+        <p class="sign-off">— fv</p>
+      </div>
+    </div>
+  </article>
+</main>
+ 
+<!-- NAV SEMANAS -->
+<div class="nav-week">
+  <a href="semana-05.html">← Semana 05 · Correlación de procesos y red</a>
+  <a href="../index.html">Ver todas las notas</a>
+</div>
+ 
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div>
+    <div style="display:inline-flex; align-items:center; gap:12px; margin-bottom:14px;">
+      <svg width="28" height="28" viewBox="0 0 120 120">
+        <defs><clipPath id="cf"><path d="M0 0 H96 L120 24 V120 H0 Z"/></clipPath></defs>
+        <g clip-path="url(#cf)">
+          <rect width="120" height="120" fill="#14110C"/>
+          <text x="60" y="78" font-family="Instrument Serif, serif" font-size="62" font-style="italic" fill="#FBF8F2" text-anchor="middle">fv</text>
+          <rect x="14" y="100" width="14" height="3" fill="#C57318"/>
+        </g>
+      </svg>
+      <span style="font-family:var(--ff-display); font-size:18px;">franco videla</span>
+    </div>
+    <p style="margin:0; max-width:32ch; font-size:13.5px;">Notas técnicas semanales sobre lo que estoy aprendiendo en ciberseguridad. Públicas, falibles, y con fecha.</p>
+    <div class="footer-tag">autodidacta · 2025–<br/>basado en buenos aires, ar</div>
+  </div>
+  <div>
+    <h5>Notas</h5>
+    <a href="../index.html">Índice por semana</a>
+    <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank">Repositorio GitHub</a>
+  </div>
+  <div>
+    <h5>Plataformas</h5>
+    <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank">GitHub</a>
+    <a href="https://linkedin.com/in/fraancovidela" target="_blank">LinkedIn</a>
+    <a href="https://tryhackme.com/p/fraancovidela" target="_blank">TryHackMe</a>
+  </div>
+  <div>
+    <h5>Contacto</h5>
+    <a href="https://github.com/fraancovidela" target="_blank">github / fraancovidela</a>
+    <a href="https://linkedin.com/in/fraancovidela" target="_blank">linkedin</a>
+  </div>
+  <div class="footer-fineprint">
+    <span>© 2026 franco videla · contenido bajo cc-by-sa 4.0</span>
+    <span>construido con bastante café</span>
+  </div>
+</footer>
+ 
+</body>
+</html>
