@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>franco videla — notas de ciberseguridad</title>
+<link rel="stylesheet" href="fv-design.css"/>
+<style>
+  /* ─── INDEX PAGE ─── */
+  .page-hero {
+    padding: 80px 56px 64px;
+    border-bottom: 1px solid var(--paper-200);
+  }
+  .hero-eyebrow {
+    font-family: var(--ff-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--ink-300); margin-bottom: 20px;
+  }
+  .hero-title {
+    font-family: var(--ff-display); font-weight: 400;
+    font-size: 72px; line-height: 0.96;
+    letter-spacing: -0.02em; margin: 0 0 24px;
+    color: var(--ink-900);
+  }
+  .hero-title em { font-style: italic; color: var(--amber-700); }
+  .hero-sub {
+    font-size: 18px; color: var(--ink-700);
+    max-width: 52ch; line-height: 1.5; margin: 0;
+  }
+ 
+  /* ─── WEEK GRID ─── */
+  .section-head {
+    padding: 48px 56px 28px;
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 1px solid var(--paper-200);
+  }
+  .section-label {
+    font-family: var(--ff-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-300);
+  }
+  .section-count {
+    font-family: var(--ff-mono); font-size: 11px; color: var(--ink-300);
+  }
+ 
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+ 
+  .note-card {
+    padding: 32px 36px;
+    border-bottom: 1px solid var(--paper-200);
+    border-right: 1px solid var(--paper-200);
+    text-decoration: none;
+    display: flex; flex-direction: column; gap: 12px;
+    transition: background 0.15s;
+    min-height: 220px;
+  }
+  .note-card:nth-child(3n) { border-right: 0; }
+  .note-card:hover { background: var(--paper-100); }
+ 
+  .note-card.featured {
+    grid-column: span 2;
+    background: var(--ink-900);
+    border-color: var(--ink-900);
+  }
+  .note-card.featured:hover { background: var(--ink-700); }
+ 
+  .card-week {
+    font-family: var(--ff-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-300);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .note-card.featured .card-week { color: color-mix(in srgb, var(--paper-100) 45%, transparent); }
+  .card-week .sep { color: var(--paper-300); }
+  .note-card.featured .card-week .sep { color: #3a2f24; }
+ 
+  .card-title {
+    font-family: var(--ff-display); font-weight: 400;
+    font-size: 24px; line-height: 1.15;
+    color: var(--ink-900); margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .card-title em { font-style: italic; color: var(--amber-700); }
+  .note-card.featured .card-title { color: var(--paper-50); font-size: 28px; }
+  .note-card.featured .card-title em { color: var(--amber-300); }
+ 
+  .card-desc {
+    font-size: 14px; color: var(--ink-500);
+    line-height: 1.5; margin: 0;
+  }
+  .note-card.featured .card-desc { color: color-mix(in srgb, var(--paper-100) 55%, transparent); }
+ 
+  .card-tags {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: auto; padding-top: 12px;
+    border-top: 1px solid var(--paper-200);
+  }
+  .note-card.featured .card-tags { border-top-color: #2c241b; }
+ 
+  .chip {
+    font-family: var(--ff-mono); font-size: 10.5px;
+    text-transform: lowercase; letter-spacing: 0.02em;
+    padding: 3px 8px; border-radius: 3px;
+    background: var(--paper-50); border: 1px solid var(--paper-200);
+    color: var(--ink-700);
+  }
+  .chip.amber { background: var(--amber-100); border-color: color-mix(in srgb, var(--amber-500) 35%, transparent); color: var(--amber-700); }
+  .note-card.featured .chip { background: transparent; border-color: #3a2f24; color: var(--paper-200); }
+  .note-card.featured .chip.amber { border-color: var(--amber-500); color: var(--amber-300); }
+ 
+  /* placeholder cards */
+  .note-card.placeholder {
+    opacity: 0.4; pointer-events: none;
+  }
+  .note-card.placeholder .card-title {
+    color: var(--ink-300);
+    font-size: 20px;
+  }
+ 
+  /* ─── ABOUT STRIP ─── */
+  .about-strip {
+    padding: 56px;
+    border-top: 1px solid var(--paper-200);
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 56px;
+    align-items: start;
+  }
+  .about-label {
+    font-family: var(--ff-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-300);
+    border-top: 1px solid var(--ink-900); padding-top: 10px;
+  }
+  .about-text {
+    font-size: 16.5px; color: var(--ink-700); line-height: 1.65;
+    max-width: 58ch; margin: 0;
+  }
+  .about-links {
+    display: flex; gap: 20px; margin-top: 20px; flex-wrap: wrap;
+  }
+  .about-links a {
+    font-family: var(--ff-mono); font-size: 12px;
+    color: var(--amber-700); text-decoration: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--amber-700) 35%, transparent);
+    padding-bottom: 1px;
+  }
+  .about-links a:hover { border-bottom-color: var(--amber-700); }
+ 
+  @media (max-width: 900px) {
+    .site-header { padding: 16px 24px; }
+    .page-hero { padding: 48px 24px 40px; }
+    .hero-title { font-size: 48px; }
+    .notes-grid { grid-template-columns: 1fr; }
+    .note-card { border-right: 0; }
+    .note-card.featured { grid-column: span 1; }
+    .section-head, .about-strip { padding: 32px 24px; }
+    .about-strip { grid-template-columns: 1fr; gap: 16px; }
+  }
+</style>
+</head>
+<body>
+ 
+<!-- HEADER -->
+<header class="site-header">
+  <a href="index.html" class="lockup">
+    <svg width="32" height="32" viewBox="0 0 120 120" aria-hidden="true">
+      <defs><clipPath id="c"><path d="M0 0 H96 L120 24 V120 H0 Z"/></clipPath></defs>
+      <g clip-path="url(#c)">
+        <rect width="120" height="120" fill="#14110C"/>
+        <text x="60" y="78" font-family="Instrument Serif, serif" font-size="62" font-style="italic" fill="#FBF8F2" text-anchor="middle">fv</text>
+        <rect x="14" y="100" width="14" height="3" fill="#C57318"/>
+      </g>
+    </svg>
+    <span class="wordmark">franco videla</span>
+  </a>
+  <nav class="site-nav">
+    <a href="index.html" class="active">notas</a>
+    <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank">github</a>
+    <a href="https://linkedin.com/in/fraancovidela" target="_blank">linkedin</a>
+    <a href="https://tryhackme.com/p/fraancovidela" target="_blank">tryhackme</a>
+  </nav>
+  <span class="site-status"><span class="dot"></span>semana 07 en curso</span>
+</header>
+ 
+<!-- HERO -->
+<section class="page-hero">
+  <p class="hero-eyebrow">cybersecurity journey · buenos aires, ar</p>
+  <h1 class="hero-title">Notas técnicas<br/><em>semanales.</em></h1>
+  <p class="hero-sub">Registro público de lo que aprendo cada semana en ciberseguridad. Sin poses, con fechas, con errores incluidos.</p>
+</section>
+ 
+<!-- GRID -->
+<div class="section-head">
+  <span class="section-label">Semanas publicadas</span>
+  <span class="section-count">07 entradas</span>
+</div>
+ 
+<div class="notes-grid">
+ 
+  <!-- SEMANA 06 — featured (la más reciente) -->
+  <a href="semanas/semana-06.html" class="note-card featured">
+    <div class="card-week">
+      <span>Semana 06</span>
+      <span class="sep">/</span>
+      <span>más reciente</span>
+    </div>
+    <h2 class="card-title">Forense de logs y <em>detección activa.</em></h2>
+    <p class="card-desc">De analizar pasivamente a construir un detector real: backdoor simulado, triage script, SSH brute force de 200 intentos y bloqueo automático con UFW. Todo desde cero.</p>
+    <div class="card-tags">
+      <span class="chip amber">forense</span>
+      <span class="chip amber">bash scripting</span>
+      <span class="chip">logs</span>
+      <span class="chip">ssh</span>
+      <span class="chip">ufw</span>
+      <span class="chip">cron</span>
+    </div>
+  </a>
+ 
+  <!-- SEMANA 05 -->
+  <a href="semanas/semana-05.html" class="note-card">
+    <div class="card-week">
+      <span>Semana 05</span>
+    </div>
+    <h2 class="card-title">Correlación de <em>procesos y red.</em></h2>
+    <p class="card-desc">Cómo identificar qué programa está detrás de cada conexión de red usando /proc, ss y lsof. Checklist de triage de 7 pasos.</p>
+    <div class="card-tags">
+      <span class="chip">linux</span>
+      <span class="chip">procesos</span>
+      <span class="chip">red</span>
+      <span class="chip">/proc</span>
+    </div>
+  </a>
+ 
+  <!-- SEMANA 04 — placeholder -->
+  <div class="note-card placeholder">
+    <div class="card-week"><span>Semana 04</span></div>
+    <h2 class="card-title">Escalada de privilegios</h2>
+    <p class="card-desc">Próximamente.</p>
+    <div class="card-tags"><span class="chip">linux</span></div>
+  </div>
+ 
+  <!-- SEMANA 03 — placeholder -->
+  <div class="note-card placeholder">
+    <div class="card-week"><span>Semana 03</span></div>
+    <h2 class="card-title">OverTheWire · Bandit</h2>
+    <p class="card-desc">Próximamente.</p>
+    <div class="card-tags"><span class="chip">ctf</span></div>
+  </div>
+ 
+  <!-- SEMANA 02 — placeholder -->
+  <div class="note-card placeholder">
+    <div class="card-week"><span>Semana 02</span></div>
+    <h2 class="card-title">Comandos Linux y administración básica</h2>
+    <p class="card-desc">Próximamente.</p>
+    <div class="card-tags"><span class="chip">linux</span></div>
+  </div>
+ 
+  <!-- SEMANA 01 — placeholder -->
+  <div class="note-card placeholder">
+    <div class="card-week"><span>Semana 01</span></div>
+    <h2 class="card-title">Redes y protocolos · modelo OSI</h2>
+    <p class="card-desc">Próximamente.</p>
+    <div class="card-tags"><span class="chip">redes</span></div>
+  </div>
+ 
+</div>
+ 
+<!-- ABOUT -->
+<div class="about-strip">
+  <span class="about-label">Sobre este sitio</span>
+  <div>
+    <p class="about-text">Soy Franco Videla, estudiante autodidacta de ciberseguridad basado en Buenos Aires. Estas notas son mi registro público de aprendizaje: scripts funcionales, análisis reales, errores documentados. Cada semana, nueva evidencia verificable.</p>
+    <div class="about-links">
+      <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank">github →</a>
+      <a href="https://linkedin.com/in/fraancovidela" target="_blank">linkedin →</a>
+      <a href="https://tryhackme.com/p/fraancovidela" target="_blank">tryhackme →</a>
+    </div>
+  </div>
+</div>
+ 
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div>
+    <div style="display:inline-flex; align-items:center; gap:12px; margin-bottom:14px;">
+      <svg width="28" height="28" viewBox="0 0 120 120">
+        <defs><clipPath id="cf"><path d="M0 0 H96 L120 24 V120 H0 Z"/></clipPath></defs>
+        <g clip-path="url(#cf)">
+          <rect width="120" height="120" fill="#14110C"/>
+          <text x="60" y="78" font-family="Instrument Serif, serif" font-size="62" font-style="italic" fill="#FBF8F2" text-anchor="middle">fv</text>
+          <rect x="14" y="100" width="14" height="3" fill="#C57318"/>
+        </g>
+      </svg>
+      <span style="font-family:var(--ff-display); font-size:18px;">franco videla</span>
+    </div>
+    <p style="margin:0; max-width:32ch; font-size:13.5px;">Notas técnicas semanales sobre lo que estoy aprendiendo en ciberseguridad. Públicas, falibles, y con fecha.</p>
+    <div class="footer-tag">autodidacta · 2025–<br/>basado en buenos aires, ar</div>
+  </div>
+  <div>
+    <h5>Notas</h5>
+    <a href="index.html">Índice por semana</a>
+    <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank">Repositorio GitHub</a>
+  </div>
+  <div>
+    <h5>Plataformas</h5>
+    <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank">GitHub</a>
+    <a href="https://linkedin.com/in/fraancovidela" target="_blank">LinkedIn</a>
+    <a href="https://tryhackme.com/p/fraancovidela" target="_blank">TryHackMe</a>
+  </div>
+  <div>
+    <h5>Contacto</h5>
+    <a href="https://github.com/fraancovidela" target="_blank">github / fraancovidela</a>
+    <a href="https://linkedin.com/in/fraancovidela" target="_blank">linkedin</a>
+  </div>
+  <div class="footer-fineprint">
+    <span>© 2026 franco videla · contenido bajo cc-by-sa 4.0</span>
+    <span>construido con bastante café</span>
+  </div>
+</footer>
+ 
+</body>
+</html>
