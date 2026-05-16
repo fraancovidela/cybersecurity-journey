@@ -1,5 +1,7 @@
 # 🔐 Cybersecurity Journey — Franco Videla
 
+🌐 **[Ver notas semanales →](https://fraancovidela.github.io/cybersecurity-journey)**
+
 Hola, soy Franco Videla. Empecé a estudiar ciberseguridad en marzo 2026
 y este repositorio documenta todo mi aprendizaje desde cero.
 
@@ -38,6 +40,7 @@ Acá vas a encontrar mis notas, write-ups y scripts a medida que avanzo.
 | `notas/` | Resúmenes semanales de lo que estudio |
 | `write-ups/` | Soluciones y aprendizajes de TryHackMe y CTFs |
 | `scripts/` | Scripts propios que voy creando |
+| `docs/` | Notas semanales en formato web (GitHub Pages) |
 
 ## 🔗 Contacto
 - 💼 LinkedIn: [fraancovidela](https://www.linkedin.com/in/fraancovidela/)
