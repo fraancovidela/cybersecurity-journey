@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>franco videla — notas de ciberseguridad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg-deep:    #060d0c;
+  --bg-card:    #0f1f1c;
+  --teal-400:   #22a99a;
+  --teal-300:   #34d4c2;
+  --text-prime: #e8f5f3;
+  --text-sec:   #7ab8b0;
+  --text-muted: #3d6b65;
+  --border:     rgba(52,212,194,0.12);
+  --border-hot: rgba(52,212,194,0.35);
+  --ff-head:  "Syne", sans-serif;
+  --ff-body:  "Space Grotesk", sans-serif;
+  --ff-mono:  "JetBrains Mono", monospace;
+}
+html { scroll-behavior: smooth; }
+body { background: var(--bg-deep); color: var(--text-prime); font-family: var(--ff-body); font-size: 15px; line-height: 1.6; overflow-x: hidden; }
+.mesh { position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse 80% 60% at 10% 20%, rgba(26,122,110,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 90% 80%, rgba(13,78,70,0.22) 0%, transparent 60%); }
+header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 48px; height: 64px; background: rgba(6,13,12,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+.logo-link { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.logo-name { font-family: var(--ff-head); font-size: 17px; font-weight: 700; color: var(--text-prime); letter-spacing: -0.02em; }
+nav { display: flex; gap: 32px; }
+nav a { font-family: var(--ff-mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-sec); text-decoration: none; transition: color 0.2s; }
+nav a:hover, nav a.active { color: var(--teal-300); }
+.status-badge { display: flex; align-items: center; gap: 8px; font-family: var(--ff-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); padding: 6px 14px; border: 1px solid var(--border); border-radius: 99px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-300); box-shadow: 0 0 8px var(--teal-300); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 8px var(--teal-300)}50%{opacity:.6;box-shadow:0 0 16px var(--teal-300)} }
+.hero { position: relative; z-index: 1; padding: 160px 48px 100px; max-width: 1200px; margin: 0 auto; }
+.hero-eyebrow { display: inline-flex; align-items: center; gap: 10px; font-family: var(--ff-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--teal-400); margin-bottom: 32px; padding: 8px 16px; border: 1px solid var(--border-hot); border-radius: 4px; background: rgba(52,212,194,0.05); }
+.hero-eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--teal-300); box-shadow: 0 0 8px var(--teal-300); }
+.hero h1 { font-family: var(--ff-head); font-size: clamp(52px,8vw,96px); font-weight: 800; line-height: 0.95; letter-spacing: -0.03em; color: var(--text-prime); margin-bottom: 28px; }
+.hero h1 em { font-style: normal; color: var(--teal-300); }
+.hero-sub { font-size: 18px; color: var(--text-sec); max-width: 48ch; line-height: 1.6; margin-bottom: 48px; font-weight: 300; }
+.hero-stats { display: flex; gap: 40px; }
+.stat { display: flex; flex-direction: column; gap: 4px; }
+.stat-num { font-family: var(--ff-head); font-size: 36px; font-weight: 800; color: var(--teal-300); line-height: 1; }
+.stat-label { font-family: var(--ff-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+.divider { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 48px; display: flex; align-items: center; gap: 16px; margin-bottom: 64px; }
+.divider-label { font-family: var(--ff-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-muted); white-space: nowrap; }
+.divider-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border-hot), transparent); }
+.notes-section { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 48px 100px; }
+.notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.card-featured { grid-column: span 2; background: var(--bg-card); border: 1px solid var(--border-hot); border-radius: 16px; padding: 40px; text-decoration: none; display: flex; flex-direction: column; gap: 20px; position: relative; overflow: hidden; transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s; }
+.card-featured::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 0% 0%, rgba(52,212,194,0.08) 0%, transparent 60%); pointer-events: none; }
+.card-featured::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, var(--teal-300), transparent); }
+.card-featured:hover { transform: translateY(-4px); border-color: var(--teal-400); box-shadow: 0 20px 60px rgba(52,212,194,0.12); }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; text-decoration: none; display: flex; flex-direction: column; gap: 16px; position: relative; overflow: hidden; transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s; }
+.card:hover { transform: translateY(-4px); border-color: var(--border-hot); box-shadow: 0 12px 40px rgba(52,212,194,0.08); }
+.card-week { font-family: var(--ff-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--teal-400); display: flex; align-items: center; gap: 10px; }
+.card-week .sep { color: var(--text-muted); }
+.card-week .badge { background: rgba(52,212,194,0.12); color: var(--teal-300); padding: 2px 8px; border-radius: 3px; font-size: 9px; }
+.card-title { font-family: var(--ff-head); font-weight: 700; color: var(--text-prime); line-height: 1.15; letter-spacing: -0.02em; }
+.card-featured .card-title { font-size: 32px; }
+.card .card-title { font-size: 20px; }
+.card-title em { font-style: normal; color: var(--teal-300); }
+.card-desc { font-size: 14px; color: var(--text-sec); line-height: 1.6; flex: 1; }
+.card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+.chip { font-family: var(--ff-mono); font-size: 10px; text-transform: lowercase; padding: 4px 10px; border-radius: 4px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-sec); }
+.chip.hot { background: rgba(52,212,194,0.08); border-color: rgba(52,212,194,0.3); color: var(--teal-300); }
+.card-arrow { position: absolute; bottom: 28px; right: 28px; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; transition: all 0.3s; }
+.card-featured:hover .card-arrow, .card:hover .card-arrow { border-color: var(--teal-300); color: var(--teal-300); background: rgba(52,212,194,0.08); transform: translate(2px,-2px); }
+.about { position: relative; z-index: 1; border-top: 1px solid var(--border); padding: 80px 48px; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.5fr; gap: 80px; align-items: center; }
+.about-label { font-family: var(--ff-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--teal-400); margin-bottom: 16px; }
+.about h2 { font-family: var(--ff-head); font-size: 40px; font-weight: 800; letter-spacing: -0.02em; color: var(--text-prime); line-height: 1.1; }
+.about h2 em { font-style: normal; color: var(--teal-300); }
+.about-text { font-size: 16px; color: var(--text-sec); line-height: 1.7; margin-bottom: 32px; font-weight: 300; }
+.about-links { display: flex; gap: 16px; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--ff-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; text-decoration: none; padding: 12px 24px; border-radius: 8px; transition: all 0.2s; }
+.btn-primary { background: var(--teal-400); color: var(--bg-deep); font-weight: 600; }
+.btn-primary:hover { background: var(--teal-300); box-shadow: 0 0 24px rgba(52,212,194,0.3); }
+.btn-ghost { border: 1px solid var(--border-hot); color: var(--teal-300); }
+.btn-ghost:hover { background: rgba(52,212,194,0.08); }
+footer { position: relative; z-index: 1; border-top: 1px solid var(--border); padding: 48px; display: flex; justify-content: space-between; align-items: center; }
+.footer-left { display: flex; align-items: center; gap: 14px; }
+.footer-name { font-family: var(--ff-head); font-size: 15px; font-weight: 700; color: var(--text-prime); }
+.footer-sub { font-family: var(--ff-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.footer-right { font-family: var(--ff-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; text-align: right; }
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1{transition-delay:.1s}.reveal-delay-2{transition-delay:.2s}.reveal-delay-3{transition-delay:.3s}
+@media(max-width:900px){header{padding:0 24px}.status-badge{display:none}.hero{padding:120px 24px 80px}.hero h1{font-size:48px}.divider,.notes-section,.about{padding-left:24px;padding-right:24px}.notes-grid{grid-template-columns:1fr}.card-featured{grid-column:span 1}.about{grid-template-columns:1fr;gap:40px}footer{padding:32px 24px;flex-direction:column;gap:16px;text-align:center}}
+</style>
+</head>
+<body>
+<div class="mesh"></div>
+
+<header>
+  <a href="index.html" class="logo-link">
+    <svg width="36" height="36" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <defs><clipPath id="c"><path d="M0 0 H96 L120 24 V120 H0 Z"/></clipPath></defs>
+      <g clip-path="url(#c)">
+        <rect width="120" height="120" fill="#0f1f1c"/>
+        <rect width="120" height="120" fill="none" stroke="#34d4c2" stroke-width="5"/>
+        <text x="60" y="78" font-family="Syne,sans-serif" font-size="58" font-weight="800" fill="#34d4c2" text-anchor="middle">fv</text>
+        <rect x="14" y="100" width="14" height="3" fill="#34d4c2"/>
+      </g>
+    </svg>
+    <span class="logo-name">franco videla</span>
+  </a>
+  <nav>
+    <a href="index.html" class="active">notas</a>
+    <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank">github</a>
+    <a href="https://linkedin.com/in/fraancovidela" target="_blank">linkedin</a>
+    <a href="https://tryhackme.com/p/fraancovidela" target="_blank">tryhackme</a>
+  </nav>
+  <div class="status-badge">
+    <span class="status-dot"></span>
+    semana 07 en curso
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-eyebrow reveal">Buenos Aires, AR · Ciberseguridad</div>
+  <h1 class="reveal reveal-delay-1">Notas<br/>técnicas<br/><em>semanales.</em></h1>
+  <p class="hero-sub reveal reveal-delay-2">Registro público de lo que aprendo cada semana. Sin poses, con fechas, con errores incluidos.</p>
+  <div class="hero-stats reveal reveal-delay-3">
+    <div class="stat"><span class="stat-num">07</span><span class="stat-label">Semanas</span></div>
+    <div class="stat"><span class="stat-num">12+</span><span class="stat-label">Scripts</span></div>
+    <div class="stat"><span class="stat-num">100%</span><span class="stat-label">Autodidacta</span></div>
+  </div>
+</section>
+
+<div class="divider reveal">
+  <span class="divider-label">Semanas publicadas</span>
+  <div class="divider-line"></div>
+  <span class="divider-label">02 entradas</span>
+</div>
+
+<section class="notes-section">
+  <div class="notes-grid">
+
+    <a href="semanas/semana-06.html" class="card-featured reveal">
+      <div class="card-week">
+        <span>Semana 06</span><span class="sep">/</span><span class="badge">más reciente</span>
+      </div>
+      <h2 class="card-title">Forense de logs y <em>detección activa.</em></h2>
+      <p class="card-desc">De analizar pasivamente a construir un detector real: backdoor simulado, triage script, SSH brute force de 200 intentos y bloqueo automático con UFW. Todo desde cero.</p>
+      <div class="card-tags">
+        <span class="chip hot">forense</span><span class="chip hot">bash scripting</span>
+        <span class="chip">logs</span><span class="chip">ssh</span><span class="chip">ufw</span><span class="chip">cron</span>
+      </div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <a href="semanas/semana-05.html" class="card reveal reveal-delay-1">
+      <div class="card-week"><span>Semana 05</span></div>
+      <h3 class="card-title">Correlación de <em>procesos y red.</em></h3>
+      <p class="card-desc">Cómo identificar qué programa está detrás de cada conexión usando /proc, ss y lsof. Checklist de triage de 7 pasos.</p>
+      <div class="card-tags"><span class="chip">linux</span><span class="chip">procesos</span><span class="chip">red</span><span class="chip">/proc</span></div>
+      <div class="card-arrow">→</div>
+    </a>
+
+  </div>
+</section>
+
+<section class="about">
+  <div class="reveal">
+    <p class="about-label">Sobre este sitio</p>
+    <h2>Aprendizaje<br/><em>verificable.</em></h2>
+  </div>
+  <div class="reveal reveal-delay-1">
+    <p class="about-text">Soy Franco Videla, estudiante autodidacta de ciberseguridad basado en Buenos Aires. Estas notas son mi registro público: scripts funcionales, análisis reales, errores documentados con fecha. Cada semana, nueva evidencia de progreso.</p>
+    <div class="about-links">
+      <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank" class="btn btn-primary">GitHub →</a>
+      <a href="https://linkedin.com/in/fraancovidela" target="_blank" class="btn btn-ghost">LinkedIn →</a>
+      <a href="https://tryhackme.com/p/fraancovidela" target="_blank" class="btn btn-ghost">TryHackMe →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-left">
+    <svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <defs><clipPath id="cf"><path d="M0 0 H96 L120 24 V120 H0 Z"/></clipPath></defs>
+      <g clip-path="url(#cf)">
+        <rect width="120" height="120" fill="#0f1f1c"/>
+        <rect width="120" height="120" fill="none" stroke="#34d4c2" stroke-width="5"/>
+        <text x="60" y="78" font-family="Syne,sans-serif" font-size="58" font-weight="800" fill="#34d4c2" text-anchor="middle">fv</text>
+        <rect x="14" y="100" width="14" height="3" fill="#34d4c2"/>
+      </g>
+    </svg>
+    <div>
+      <div class="footer-name">franco videla</div>
+      <div class="footer-sub">autodidacta · buenos aires, ar · 2025–</div>
+    </div>
+  </div>
+  <div class="footer-right">
+    <div>© 2026 franco videla</div>
+    <div>contenido bajo cc-by-sa 4.0</div>
+  </div>
+</footer>
+
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+document.querySelectorAll('.hero .reveal').forEach(el => setTimeout(() => el.classList.add('visible'), 100));
+</script>
+</body>
+</html>
