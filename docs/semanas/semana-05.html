@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Semana 05 — Correlación de procesos y red · franco videla</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg-deep:    #060d0c;
+  --bg-card:    #0f1f1c;
+  --bg-code:    #080f0e;
+  --teal-400:   #22a99a;
+  --teal-300:   #34d4c2;
+  --teal-100:   #a8f0e8;
+  --sage:       #b7c99a;
+  --text-prime: #e8f5f3;
+  --text-sec:   #7ab8b0;
+  --text-muted: #3d6b65;
+  --border:     rgba(52,212,194,0.12);
+  --border-hot: rgba(52,212,194,0.35);
+  --ff-head:  "Syne", sans-serif;
+  --ff-body:  "Space Grotesk", sans-serif;
+  --ff-mono:  "JetBrains Mono", monospace;
+}
+html { scroll-behavior: smooth; }
+body { background: var(--bg-deep); color: var(--text-prime); font-family: var(--ff-body); font-size: 15px; line-height: 1.6; overflow-x: hidden; }
+.mesh { position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse 80% 60% at 10% 20%, rgba(26,122,110,0.12) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 90% 80%, rgba(13,78,70,0.15) 0%, transparent 60%); }
+header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 48px; height: 64px; background: rgba(6,13,12,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+.logo-link { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.logo-name { font-family: var(--ff-head); font-size: 17px; font-weight: 700; color: var(--text-prime); letter-spacing: -0.02em; }
+nav { display: flex; gap: 32px; }
+nav a { font-family: var(--ff-mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-sec); text-decoration: none; transition: color 0.2s; }
+nav a:hover, nav a.active { color: var(--teal-300); }
+.status-badge { display: flex; align-items: center; gap: 8px; font-family: var(--ff-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); padding: 6px 14px; border: 1px solid var(--border); border-radius: 99px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-300); box-shadow: 0 0 8px var(--teal-300); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 8px var(--teal-300)}50%{opacity:.6;box-shadow:0 0 16px var(--teal-300)} }
+.article-wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 100px 48px 80px; }
+.article-meta { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--ff-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 24px; margin-top: 40px; }
+.article-meta .sep { color: var(--border-hot); }
+.article-wrap h1 { font-family: var(--ff-head); font-size: clamp(36px,5vw,64px); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; color: var(--text-prime); margin-bottom: 20px; max-width: 20ch; }
+.article-wrap h1 em { font-style: normal; color: var(--teal-300); }
+.lede { font-size: 18px; color: var(--text-sec); line-height: 1.6; max-width: 60ch; margin-bottom: 56px; font-weight: 300; }
+.article-body { display: grid; grid-template-columns: 200px 1fr; gap: 64px; }
+.toc { position: sticky; top: 90px; align-self: start; }
+.toc-label { font-family: var(--ff-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--teal-400); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border-hot); }
+.toc ol { list-style: none; counter-reset: toc; display: grid; gap: 10px; }
+.toc li { counter-increment: toc; display: flex; gap: 8px; }
+.toc li::before { content: counter(toc, decimal-leading-zero); font-family: var(--ff-mono); font-size: 10px; color: var(--text-muted); flex-shrink: 0; margin-top: 1px; }
+.toc a { font-family: var(--ff-mono); font-size: 11px; color: var(--text-sec); text-decoration: none; line-height: 1.4; transition: color 0.2s; }
+.toc a:hover { color: var(--teal-300); }
+.prose h2 { font-family: var(--ff-head); font-size: 28px; font-weight: 700; color: var(--text-prime); letter-spacing: -0.02em; margin: 48px 0 16px; display: flex; align-items: baseline; gap: 12px; }
+.prose h2:first-child { margin-top: 0; }
+.prose h2 .num { font-family: var(--ff-mono); font-size: 10px; color: var(--teal-400); letter-spacing: 0.1em; flex-shrink: 0; }
+.prose p { font-size: 16px; color: var(--text-sec); line-height: 1.7; margin-bottom: 16px; max-width: 66ch; font-weight: 300; }
+.prose strong { color: var(--text-prime); font-weight: 600; }
+.prose ul { list-style: none; margin: 0 0 20px; display: grid; gap: 8px; }
+.prose ul li { position: relative; padding-left: 20px; font-size: 15px; color: var(--text-sec); line-height: 1.6; max-width: 66ch; font-weight: 300; }
+.prose ul li::before { content: ""; position: absolute; left: 0; top: 0.75em; width: 8px; height: 1px; background: var(--teal-400); }
+.checklist { list-style: none; margin: 0 0 24px; display: grid; gap: 10px; counter-reset: step; }
+.checklist li { counter-increment: step; position: relative; padding-left: 36px; font-size: 15px; color: var(--text-sec); line-height: 1.6; font-weight: 300; }
+.checklist li::before { content: counter(step, decimal-leading-zero); position: absolute; left: 0; font-family: var(--ff-mono); font-size: 10px; color: var(--teal-400); font-weight: 600; top: 3px; }
+.code-block { background: var(--bg-code); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 24px 0; font-family: var(--ff-mono); font-size: 13px; line-height: 1.7; }
+.code-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: rgba(52,212,194,0.04); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--border-hot); }
+.code-file { font-size: 11px; color: var(--text-muted); }
+.code-file b { color: var(--teal-100); font-weight: 500; }
+.code-lang { font-size: 9px; color: var(--teal-400); text-transform: uppercase; letter-spacing: 0.12em; }
+.code-body { display: grid; grid-template-columns: 40px 1fr; }
+.code-gutter { padding: 16px 12px; text-align: right; color: var(--text-muted); opacity: 0.4; user-select: none; border-right: 1px solid var(--border); font-size: 12px; }
+.code-gutter span { display: block; line-height: 1.7; }
+.code-lines { padding: 16px 20px; white-space: pre; overflow-x: auto; }
+.code-lines .ln { display: block; }
+.tok-cmt { color: #3d6b65; font-style: italic; }
+.tok-fn  { color: #f0d78c; }
+.tok-str { color: var(--sage); }
+.tok-var { color: var(--text-sec); }
+code { font-family: var(--ff-mono); font-size: 0.85em; background: rgba(52,212,194,0.08); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; color: var(--teal-100); }
+.callout { border-left: 2px solid var(--teal-400); background: rgba(52,212,194,0.05); padding: 16px 20px; margin: 24px 0; border-radius: 0 8px 8px 0; }
+.callout-label { font-family: var(--ff-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--teal-400); display: block; margin-bottom: 8px; font-weight: 600; }
+.callout p { font-size: 14px; margin: 0; }
+.table-wrap { overflow-x: auto; margin: 24px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th { font-family: var(--ff-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--border-hot); font-weight: 600; }
+tbody td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text-sec); line-height: 1.5; vertical-align: top; font-weight: 300; }
+tbody td:first-child { color: var(--text-prime); font-weight: 500; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: rgba(52,212,194,0.03); }
+.sign-off { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border); font-family: var(--ff-head); font-size: 20px; font-weight: 700; color: var(--teal-300); }
+.week-nav { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 32px 48px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.week-nav a { font-family: var(--ff-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--teal-400); text-decoration: none; transition: color 0.2s; }
+.week-nav a:hover { color: var(--teal-300); }
+.week-nav span { font-family: var(--ff-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+footer { position: relative; z-index: 1; border-top: 1px solid var(--border); padding: 40px 48px; display: flex; justify-content: space-between; align-items: center; }
+.footer-left { display: flex; align-items: center; gap: 14px; }
+.footer-name { font-family: var(--ff-head); font-size: 15px; font-weight: 700; color: var(--text-prime); }
+.footer-sub { font-family: var(--ff-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.footer-right { font-family: var(--ff-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; text-align: right; }
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1{transition-delay:.1s}.reveal-delay-2{transition-delay:.2s}
+@media(max-width:900px){header{padding:0 24px}.status-badge{display:none}.article-wrap{padding:90px 24px 60px}.article-body{grid-template-columns:1fr}.toc{position:static;margin-bottom:40px}.week-nav{padding:24px}footer{padding:32px 24px;flex-direction:column;gap:16px;text-align:center}}
+</style>
+</head>
+<body>
+<div class="mesh"></div>
+ 
+<header>
+  <a href="../index.html" class="logo-link">
+    <svg width="36" height="36" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <defs><clipPath id="c"><path d="M0 0 H96 L120 24 V120 H0 Z"/></clipPath></defs>
+      <g clip-path="url(#c)">
+        <rect width="120" height="120" fill="#0f1f1c"/>
+        <rect width="120" height="120" fill="none" stroke="#34d4c2" stroke-width="5"/>
+        <text x="60" y="78" font-family="Syne,sans-serif" font-size="58" font-weight="800" fill="#34d4c2" text-anchor="middle">fv</text>
+        <rect x="14" y="100" width="14" height="3" fill="#34d4c2"/>
+      </g>
+    </svg>
+    <span class="logo-name">franco videla</span>
+  </a>
+  <nav>
+    <a href="../index.html" class="active">notas</a>
+    <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank">github</a>
+    <a href="https://linkedin.com/in/fraancovidela" target="_blank">linkedin</a>
+    <a href="https://tryhackme.com/p/fraancovidela" target="_blank">tryhackme</a>
+  </nav>
+  <div class="status-badge">
+    <span class="status-dot"></span>
+    semana 07 en curso
+  </div>
+</header>
+ 
+<div class="article-wrap">
+  <div class="article-meta reveal">
+    <span>Semana 05</span>
+    <span class="sep">/</span>
+    <span>Linux · Procesos · Red</span>
+  </div>
+ 
+  <h1 class="reveal reveal-delay-1">Correlación de <em>procesos y red.</em></h1>
+  <p class="lede reveal reveal-delay-2">Aprendí a responder una pregunta específica: ¿quién está detrás de esta conexión? Parece simple, pero requiere saber dónde mirar y en qué orden.</p>
+ 
+  <div class="article-body">
+    <nav class="toc reveal">
+      <div class="toc-label">En esta nota</div>
+      <ol>
+        <li><a href="#caso">El caso práctico</a></li>
+        <li><a href="#proc">El filesystem /proc</a></li>
+        <li><a href="#checklist">Checklist de triaje</a></li>
+        <li><a href="#loopback">Sobre el loopback</a></li>
+        <li><a href="#scripts">Dónde guardar scripts</a></li>
+        <li><a href="#pendiente">Pregunta pendiente</a></li>
+      </ol>
+    </nav>
+ 
+    <div class="prose reveal reveal-delay-1">
+ 
+      <h2 id="caso"><span class="num">§ 01</span> El caso práctico</h2>
+      <p>Encontré una conexión establecida en la red de mi VM. Obtuve el PID con <code>ss -tanp | grep ESTAB</code>, fui a <code>/proc/&lt;PID&gt;/status</code> y era Firefox. Lo interesante fue buscar el proceso padre (PPID): era <code>gnome-shell</code>.</p>
+      <p>Tiene sentido — GNOME es el entorno de escritorio que lanza el navegador. Pero hasta que lo vi en el árbol real, era solo teoría. Cuando conectás proceso → padre → abuelo, empezás a ver la diferencia entre un proceso legítimo y uno que no debería estar ahí.</p>
+ 
+      <div class="code-block">
+        <div class="code-head">
+          <div class="code-dots"><span></span><span></span><span></span></div>
+          <span class="code-file">terminal</span>
+          <span class="code-lang">bash</span>
+        </div>
+        <div class="code-body">
+          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+          <div class="code-lines"><span class="ln"><span class="tok-cmt"># ver conexiones establecidas con su PID</span></span><span class="ln"><span class="tok-fn">ss</span> -tanp | <span class="tok-fn">grep</span> ESTAB</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># ver el proceso padre</span></span><span class="ln"><span class="tok-fn">cat</span> /proc/<span class="tok-var">&lt;PID&gt;</span>/status | <span class="tok-fn">grep</span> PPid</span></div>
+        </div>
+      </div>
+ 
+      <h2 id="proc"><span class="num">§ 02</span> El filesystem /proc</h2>
+      <p><code>/proc</code> es un filesystem virtual — no existe en disco, el kernel lo genera en tiempo real. Cada directorio numerado es un proceso activo. Ahí encontrás el binario real, los argumentos de lanzamiento, el estado, los file descriptors abiertos.</p>
+      <p><code>/proc/&lt;PID&gt;/exe</code> muestra el binario real incluso si alguien renombró el proceso para camuflarse. Si el nombre en <code>ps</code> no coincide con lo que apunta <code>exe</code>, hay algo raro.</p>
+ 
+      <h2 id="checklist"><span class="num">§ 03</span> Checklist de triaje</h2>
+      <p>El orden importa — cada paso filtra lo que vale la pena investigar en el siguiente.</p>
+      <ol class="checklist">
+        <li>¿Quién está conectado al sistema?</li>
+        <li>¿Qué procesos están corriendo?</li>
+        <li>¿Qué conexiones de red existen y qué proceso las generó?</li>
+        <li>¿Hay procesos sin ruta legítima o con rutas sospechosas?</li>
+        <li>¿Hay archivos ejecutables en directorios temporales?</li>
+        <li>¿Hay conexiones a IPs externas? (excluyendo loopback)</li>
+        <li>¿Hay cron jobs no autorizados?</li>
+      </ol>
+ 
+      <h2 id="loopback"><span class="num">§ 04</span> Sobre el loopback</h2>
+      <p>Al principio excluía el loopback mecánicamente, sin entender por qué. La respuesta es simple: <code>127.0.0.1</code> es el sistema hablando consigo mismo. Ese tráfico nunca sale a la red — puede ser una base de datos comunicándose con la aplicación, un servicio local.</p>
+      <div class="callout">
+        <span class="callout-label">↳ Regla práctica</span>
+        <p>Excluir loopback no es ignorar tráfico — es separar lo que puede ser amenaza externa de lo que es comunicación interna del sistema.</p>
+      </div>
+ 
+      <h2 id="scripts"><span class="num">§ 05</span> Dónde guardar scripts en un sistema real</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Situación</th><th>Dónde</th></tr></thead>
+          <tbody>
+            <tr><td>Script propio que debe persistir</td><td><code>/usr/local/bin/</code></td></tr>
+            <tr><td>Automatización seria con crontab</td><td><code>/usr/local/bin/</code></td></tr>
+            <tr><td>CTF: explotar automatización ajena</td><td><code>/var/spool/</code> — zona de paso temporal, el sistema ejecuta y borra</td></tr>
+          </tbody>
+        </table>
+      </div>
+ 
+      <h2 id="pendiente"><span class="num">§ 06</span> Pregunta pendiente</h2>
+      <p>¿Qué pasa cuando un proceso malicioso borra su propio ejecutable después de arrancar? El binario desaparece del disco, el proceso sigue en RAM. ¿Cómo lo detectás si <code>/proc/&lt;PID&gt;/exe</code> apunta a algo que ya no existe?</p>
+ 
+      <div class="sign-off">— fv</div>
+    </div>
+  </div>
+</div>
+ 
+<div class="week-nav">
+  <span>← semana anterior (próximamente)</span>
+  <a href="semana-06.html">Semana 06 · Forense de logs →</a>
+</div>
+ 
+<footer>
+  <div class="footer-left">
+    <svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <defs><clipPath id="cf"><path d="M0 0 H96 L120 24 V120 H0 Z"/></clipPath></defs>
+      <g clip-path="url(#cf)">
+        <rect width="120" height="120" fill="#0f1f1c"/>
+        <rect width="120" height="120" fill="none" stroke="#34d4c2" stroke-width="5"/>
+        <text x="60" y="78" font-family="Syne,sans-serif" font-size="58" font-weight="800" fill="#34d4c2" text-anchor="middle">fv</text>
+        <rect x="14" y="100" width="14" height="3" fill="#34d4c2"/>
+      </g>
+    </svg>
+    <div>
+      <div class="footer-name">franco videla</div>
+      <div class="footer-sub">autodidacta · buenos aires, ar · 2025–</div>
+    </div>
+  </div>
+  <div class="footer-right">
+    <div>© 2026 franco videla</div>
+    <div>contenido bajo cc-by-sa 4.0</div>
+  </div>
+</footer>
+ 
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+}, { threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+setTimeout(() => document.querySelectorAll('.article-wrap .reveal').forEach(el => el.classList.add('visible')), 100);
+</script>
+</body>
+</html>
