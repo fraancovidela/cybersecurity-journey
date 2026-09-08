@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Semana 06 — Forense de logs y detección activa · franco videla</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg-deep:    #060d0c;
+  --bg-card:    #0f1f1c;
+  --bg-code:    #080f0e;
+  --teal-400:   #22a99a;
+  --teal-300:   #34d4c2;
+  --teal-100:   #a8f0e8;
+  --amber:      #e5a85a;
+  --sage:       #b7c99a;
+  --critical:   #e57373;
+  --text-prime: #e8f5f3;
+  --text-sec:   #7ab8b0;
+  --text-muted: #3d6b65;
+  --border:     rgba(52,212,194,0.12);
+  --border-hot: rgba(52,212,194,0.35);
+  --ff-head:  "Syne", sans-serif;
+  --ff-body:  "Space Grotesk", sans-serif;
+  --ff-mono:  "JetBrains Mono", monospace;
+}
+html { scroll-behavior: smooth; }
+body { background: var(--bg-deep); color: var(--text-prime); font-family: var(--ff-body); font-size: 15px; line-height: 1.6; overflow-x: hidden; }
+.mesh { position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse 80% 60% at 10% 20%, rgba(26,122,110,0.12) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 90% 80%, rgba(13,78,70,0.15) 0%, transparent 60%); }
+
+/* HEADER */
+header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 48px; height: 64px; background: rgba(6,13,12,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+.logo-link { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.logo-name { font-family: var(--ff-head); font-size: 17px; font-weight: 700; color: var(--text-prime); letter-spacing: -0.02em; }
+nav { display: flex; gap: 32px; }
+nav a { font-family: var(--ff-mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-sec); text-decoration: none; transition: color 0.2s; }
+nav a:hover, nav a.active { color: var(--teal-300); }
+.status-badge { display: flex; align-items: center; gap: 8px; font-family: var(--ff-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); padding: 6px 14px; border: 1px solid var(--border); border-radius: 99px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-300); box-shadow: 0 0 8px var(--teal-300); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 8px var(--teal-300)}50%{opacity:.6;box-shadow:0 0 16px var(--teal-300)} }
+
+/* ARTICLE LAYOUT */
+.article-wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 100px 48px 80px; }
+.article-meta { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--ff-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 24px; margin-top: 40px; }
+.article-meta .sep { color: var(--border-hot); }
+.article h1 { font-family: var(--ff-head); font-size: clamp(36px,5vw,64px); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; color: var(--text-prime); margin-bottom: 20px; max-width: 20ch; }
+.article h1 em { font-style: normal; color: var(--teal-300); }
+.lede { font-size: 18px; color: var(--text-sec); line-height: 1.6; max-width: 60ch; margin-bottom: 56px; font-weight: 300; }
+
+.article-body { display: grid; grid-template-columns: 200px 1fr; gap: 64px; }
+
+/* TOC */
+.toc { position: sticky; top: 90px; align-self: start; }
+.toc-label { font-family: var(--ff-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--teal-400); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border-hot); }
+.toc ol { list-style: none; counter-reset: toc; display: grid; gap: 10px; }
+.toc li { counter-increment: toc; display: flex; gap: 8px; }
+.toc li::before { content: counter(toc, decimal-leading-zero); font-family: var(--ff-mono); font-size: 10px; color: var(--text-muted); flex-shrink: 0; margin-top: 1px; }
+.toc a { font-family: var(--ff-mono); font-size: 11px; color: var(--text-sec); text-decoration: none; line-height: 1.4; transition: color 0.2s; }
+.toc a:hover { color: var(--teal-300); }
+
+/* PROSE */
+.prose h2 { font-family: var(--ff-head); font-size: 28px; font-weight: 700; color: var(--text-prime); letter-spacing: -0.02em; margin: 48px 0 16px; display: flex; align-items: baseline; gap: 12px; }
+.prose h2:first-child { margin-top: 0; }
+.prose h2 .num { font-family: var(--ff-mono); font-size: 10px; color: var(--teal-400); letter-spacing: 0.1em; flex-shrink: 0; }
+.prose p { font-size: 16px; color: var(--text-sec); line-height: 1.7; margin-bottom: 16px; max-width: 66ch; font-weight: 300; }
+.prose strong { color: var(--text-prime); font-weight: 600; }
+.prose a { color: var(--teal-300); text-decoration: none; border-bottom: 1px solid rgba(52,212,194,0.3); }
+.prose ul { list-style: none; margin: 0 0 20px; display: grid; gap: 8px; }
+.prose ul li { position: relative; padding-left: 20px; font-size: 15px; color: var(--text-sec); line-height: 1.6; max-width: 66ch; font-weight: 300; }
+.prose ul li::before { content: ""; position: absolute; left: 0; top: 0.75em; width: 8px; height: 1px; background: var(--teal-400); }
+
+/* CODE BLOCKS */
+.code-block { background: var(--bg-code); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 24px 0; font-family: var(--ff-mono); font-size: 13px; line-height: 1.7; }
+.code-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: rgba(52,212,194,0.04); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--border-hot); }
+.code-file { font-size: 11px; color: var(--text-muted); }
+.code-file b { color: var(--teal-100); font-weight: 500; }
+.code-lang { font-size: 9px; color: var(--teal-400); text-transform: uppercase; letter-spacing: 0.12em; }
+.code-body { display: grid; grid-template-columns: 40px 1fr; }
+.code-gutter { padding: 16px 12px; text-align: right; color: var(--text-muted); opacity: 0.4; user-select: none; border-right: 1px solid var(--border); font-size: 12px; }
+.code-gutter span { display: block; line-height: 1.7; }
+.code-lines { padding: 16px 20px; white-space: pre; overflow-x: auto; }
+.code-lines .ln { display: block; }
+.tok-cmt { color: #3d6b65; font-style: italic; }
+.tok-fn  { color: #f0d78c; }
+.tok-str { color: var(--sage); }
+.tok-var { color: var(--text-sec); }
+.tok-num { color: #e89a6a; }
+
+/* INLINE CODE */
+code { font-family: var(--ff-mono); font-size: 0.85em; background: rgba(52,212,194,0.08); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; color: var(--teal-100); }
+
+/* CALLOUTS */
+.callout { border-left: 2px solid var(--teal-400); background: rgba(52,212,194,0.05); padding: 16px 20px; margin: 24px 0; border-radius: 0 8px 8px 0; }
+.callout-label { font-family: var(--ff-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--teal-400); display: block; margin-bottom: 8px; font-weight: 600; }
+.callout p { font-size: 14px; margin: 0; }
+.callout.crit { border-color: var(--critical); background: rgba(229,115,115,0.05); }
+.callout.crit .callout-label { color: var(--critical); }
+
+/* CONFUSION TABLE */
+.table-wrap { overflow-x: auto; margin: 24px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th { font-family: var(--ff-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--border-hot); font-weight: 600; }
+tbody td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text-sec); line-height: 1.5; vertical-align: top; font-weight: 300; }
+tbody td:first-child { color: var(--text-prime); font-weight: 500; max-width: 200px; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: rgba(52,212,194,0.03); }
+
+/* SIGN OFF */
+.sign-off { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border); font-family: var(--ff-head); font-size: 20px; font-weight: 700; color: var(--teal-300); }
+
+/* NAV BETWEEN WEEKS */
+.week-nav { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 32px 48px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.week-nav a { font-family: var(--ff-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--teal-400); text-decoration: none; transition: color 0.2s; }
+.week-nav a:hover { color: var(--teal-300); }
+
+/* FOOTER */
+footer { position: relative; z-index: 1; border-top: 1px solid var(--border); padding: 40px 48px; display: flex; justify-content: space-between; align-items: center; }
+.footer-left { display: flex; align-items: center; gap: 14px; }
+.footer-name { font-family: var(--ff-head); font-size: 15px; font-weight: 700; color: var(--text-prime); }
+.footer-sub { font-family: var(--ff-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.footer-right { font-family: var(--ff-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; text-align: right; }
+
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1{transition-delay:.1s}.reveal-delay-2{transition-delay:.2s}
+
+@media(max-width:900px){header{padding:0 24px}.status-badge{display:none}.article-wrap{padding:90px 24px 60px}.article-body{grid-template-columns:1fr}.toc{position:static;margin-bottom:40px}.week-nav{padding:24px}.footer{padding:32px 24px;flex-direction:column;gap:16px;text-align:center}}
+
+/* FIGURES (screenshots) */
+figure { margin: 28px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-code); }
+figure img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--border); }
+figcaption { padding: 12px 16px; font-family: var(--ff-mono); font-size: 11.5px; line-height: 1.55; color: var(--text-muted); }
+figcaption b { color: var(--text-sec); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="mesh"></div>
+
+<header>
+  <a href="../index.html" class="logo-link">
+    <svg width="36" height="36" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <defs><clipPath id="c"><path d="M0 0 H96 L120 24 V120 H0 Z"/></clipPath></defs>
+      <g clip-path="url(#c)">
+        <rect width="120" height="120" fill="#0f1f1c"/>
+        <rect width="120" height="120" fill="none" stroke="#34d4c2" stroke-width="5"/>
+        <text x="60" y="78" font-family="Syne,sans-serif" font-size="58" font-weight="800" fill="#34d4c2" text-anchor="middle">fv</text>
+        <rect x="14" y="100" width="14" height="3" fill="#34d4c2"/>
+      </g>
+    </svg>
+    <span class="logo-name">franco videla</span>
+  </a>
+  <nav>
+    <a href="../index.html" class="active">notas</a>
+    <a href="https://github.com/fraancovidela/cybersecurity-journey" target="_blank">github</a>
+    <a href="https://linkedin.com/in/fraancovidela" target="_blank">linkedin</a>
+    <a href="https://tryhackme.com/p/fraancovidela" target="_blank">tryhackme</a>
+  </nav>
+  <div class="status-badge">
+    <span class="status-dot"></span>
+    fase 1 completa
+  </div>
+</header>
+<div class="article-wrap">
+  <div class="article-meta reveal">
+    <span>Semana 07</span>
+    <span class="sep">/</span>
+    <span>Hardening · Forense web · TryHackMe</span>
+  </div>
+
+  <h1 class="reveal reveal-delay-1">Fail2Ban, forense web y <em>mi primer hack ético.</em></h1>
+  <p class="lede reveal reveal-delay-2">Cerré la pregunta que venía arrastrando desde la semana 06: cómo se desbanea una IP sola. De ahí salté a leer logs de un servidor web real como un analista, y terminé haciendo mi primer room de TryHackMe. Tres cosas distintas, una misma sesión, con capturas de todo.</p>
+
+  <div class="article-body">
+    <nav class="toc reveal">
+      <div class="toc-label">En esta nota</div>
+      <ol><li><a href="#fail2ban">Fail2Ban: cómo desbanea solo</a></li><li><a href="#jaillocal">jail.conf vs jail.local — la regla de oro</a></li><li><a href="#apache">Forense de logs web con Apache</a></li><li><a href="#escaneo">Simular y detectar un escaneo de directorios</a></li><li><a href="#thm">TryHackMe: primer room completado</a></li><li><a href="#confusiones">Lo que no entendía al principio</a></li><li><a href="#profesional">Conexión con el mundo profesional</a></li><li><a href="#pendiente">Pregunta pendiente y próximo paso</a></li></ol>
+    </nav>
+
+    <div class="prose reveal reveal-delay-1">
+
+      <h2 id="fail2ban"><span class="num">§ 01</span> Fail2Ban: cómo desbanea solo</h2>
+      <p>En la semana 06 armé un detector de SSH brute force que bloqueaba con UFW, pero no desbloqueaba solo. La pregunta era: ¿cómo hace Fail2Ban para banear por tiempo limitado y soltar la IP sin que nadie toque nada? La respuesta me sorprendió: <strong>iptables no tiene timeout nativo</strong>. Fail2Ban guarda el timestamp del ban en una base SQLite, y un scheduler propio compara cada tanto si <code>now - ban_timestamp &gt; bantime</code>. Cuando se pasa, borra la regla de iptables. El unban no es magia de iptables, es lógica de Fail2Ban.</p>
+      <p>Comparado con mi script manual, la diferencia de robustez es clara: monitorea en tiempo real con inotify en vez de correr por cron, usa filtros configurables por regex, y persiste el estado.</p>
+      <h2 id="jaillocal"><span class="num">§ 02</span> jail.conf vs jail.local — la regla de oro</h2>
+      <p>Acá me comí dos errores seguidos, y los dos enseñaron. Una <strong>jail</strong> es la regla completa para un servicio: qué log mirar, qué regex, cuántos intentos y cuánto banear. La regla de oro es <strong>nunca editar <code>jail.conf</code></strong>: cuando <code>apt upgrade</code> actualiza el paquete lo sobreescribe sin avisar y tus cambios desaparecen. Todo va en <code>jail.local</code>, que Fail2Ban mergea con precedencia.</p>
+      <figure><img src="../assets/semana-07/jail-local-inexistente.png" alt="Error 1: no existía jail.local — la config previa se había hecho sobre jail.conf, el archivo que no hay que tocar." loading="lazy"/><figcaption><b>Error 1:</b> no existía <code>jail.local</code> — la config previa se había hecho sobre <code>jail.conf</code>, el archivo que no hay que tocar.</figcaption></figure>
+      <p>El segundo error fue más sutil: había copiado todo <code>jail.conf</code> dentro de <code>jail.local</code> y agregado <code>[sshd]</code> al final. Fail2Ban no levantó. Lo diagnostiqué corriéndolo en <strong>foreground</strong> (<code>fail2ban-server -xf start</code>), que muestra el error que no aparece en los logs normales:</p>
+      <figure><img src="../assets/semana-07/error-seccion-sshd-duplicada.png" alt="Error 2: section 'sshd' already exists — line 982. La sección estaba duplicada por copiar todo el archivo." loading="lazy"/><figcaption><b>Error 2:</b> <code>section 'sshd' already exists — line 982</code>. La sección estaba duplicada por copiar todo el archivo.</figcaption></figure>
+      <p>La solución fue tirar todo y dejar un <code>jail.local</code> minimalista, solo con mis decisiones:</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">/etc/fail2ban/jail.local</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span></div><div class="code-lines"><span class="ln">[sshd]</span><span class="ln">enabled = true</span><span class="ln">port = ssh</span><span class="ln">logpath = /var/log/auth.log</span><span class="ln">maxretry = 3</span><span class="ln">findtime = 600</span><span class="ln">bantime = 3600</span></div></div></div>
+      <figure><img src="../assets/semana-07/verificacion-valores-jail-local.png" alt="Verificación de que los valores activos salen de jail.local: maxretry=3, bantime=3600, findtime=600 confirmados." loading="lazy"/><figcaption>Verificación de que los valores activos salen de <code>jail.local</code>: <b>maxretry=3, bantime=3600, findtime=600</b> confirmados.</figcaption></figure>
+      <p>Para ver el ciclo entero puse <code>bantime=60</code> e <code>ignoreself=false</code>, generé intentos fallidos desde localhost y lo miré pasar en vivo:</p>
+      <figure><img src="../assets/semana-07/ciclo-ban-unban-automatico.png" alt="El ciclo completo en el log: Found → Found → Ban 127.0.0.1 → (60s) → Unban 127.0.0.1, automático y sin intervención." loading="lazy"/><figcaption>El ciclo completo en el log: <b>Found → Found → Ban 127.0.0.1 → (60s) → Unban 127.0.0.1</b>, automático y sin intervención.</figcaption></figure>
+      <h2 id="apache"><span class="num">§ 03</span> Forense de logs web con Apache</h2>
+      <p>Segundo bloque: monté Apache no para servir nada, sino para <strong>generar logs reales y atacarlos yo mismo</strong>, reproduciendo los escenarios de TryHackMe. El log principal es <code>access.log</code>: una línea por request.</p>
+      <figure><img src="../assets/semana-07/apache-instalado.png" alt="Apache instalado y corriendo en el lab. No sirve un sitio real: está para producir logs reales sobre los que practicar el triaje." loading="lazy"/><figcaption>Apache instalado y corriendo en el lab. No sirve un sitio real: está para producir logs reales sobre los que practicar el triaje.</figcaption></figure>
+      <figure><img src="../assets/semana-07/logs-apache-directorio.png" alt="Los archivos de log de Apache. access.log es el que registra cada request HTTP — el que mira un analista." loading="lazy"/><figcaption>Los archivos de log de Apache. <code>access.log</code> es el que registra cada request HTTP — el que mira un analista.</figcaption></figure>
+      <p>Aprendí a leer la anatomía de una línea: IP del cliente, timestamp, método + ruta + protocolo, status code, bytes, referrer y <strong>User-Agent</strong>. Ese último campo es el que delata la herramienta que hizo el request.</p>
+      <figure><img src="../assets/semana-07/anatomia-linea-log-apache.png" alt="Anatomía de una línea de access.log: cada campo cuenta algo. El User-Agent (curl/8.5.0) revela qué programa hizo el request." loading="lazy"/><figcaption>Anatomía de una línea de <code>access.log</code>: cada campo cuenta algo. El User-Agent (<code>curl/8.5.0</code>) revela qué programa hizo el request.</figcaption></figure>
+      <p>Los status codes cambian de significado cuando pensás en seguridad: un <code>200</code> en <code>/admin</code> es alerta; una ráfaga de <code>404</code> es un escaneo de directorios. Y hasta el tamaño en bytes es indicador — un <code>200</code> devuelve la página completa, un <code>404</code> solo la de error.</p>
+      <figure><img src="../assets/semana-07/status-200-vs-404.png" alt="El 200 devuelve 10926 bytes (página completa); el 404, 432 bytes (solo el error). La diferencia de tamaño también es una firma." loading="lazy"/><figcaption>El <code>200</code> devuelve 10926 bytes (página completa); el <code>404</code>, 432 bytes (solo el error). La diferencia de tamaño también es una firma.</figcaption></figure>
+      <h2 id="escaneo"><span class="num">§ 04</span> Simular y detectar un escaneo de directorios</h2>
+      <p>Un atacante no sabe qué rutas existen, así que herramientas como gobuster prueban miles automáticamente. Lo simulé con un loop de <code>curl</code> contra rutas sensibles, y después lo cacé en los logs con cuatro comandos de <code>awk</code>.</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span></div><div class="code-lines"><span class="ln"><span class="tok-cmt"># simular el escaneo</span></span><span class="ln">for ruta in admin login phpmyadmin backup config .env wp-admin; do</span><span class="ln">  curl -s -o /dev/null http://localhost/$ruta</span><span class="ln">done</span></div></div></div>
+      <figure><img src="../assets/semana-07/escaneo-directorios-loop.png" alt="El loop de curl corriendo. En los logs deja una firma clara: misma IP, timestamps en el mismo segundo, mayoría de 404, rutas con nombres sensibles." loading="lazy"/><figcaption>El loop de <code>curl</code> corriendo. En los logs deja una firma clara: misma IP, timestamps en el mismo segundo, mayoría de 404, rutas con nombres sensibles.</figcaption></figure>
+      <p>El triaje con <code>awk</code>: extraer un campo → ordenar → contar repetidos → mostrar de mayor a menor. Cuatro variantes cubren casi todo.</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div><div class="code-lines"><span class="ln"><span class="tok-cmt"># distribución de status codes</span></span><span class="ln">awk '{print $9}' access.log | sort | uniq -c | sort -rn</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># IPs con más requests</span></span><span class="ln">awk '{print $1}' access.log | sort | uniq -c | sort -rn</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># User-Agents sospechosos (sqlmap, gobuster, nikto)</span></span><span class="ln">awk -F'"' '{print $6}' access.log | sort | uniq -c | sort -rn</span></div></div></div>
+      <figure><img src="../assets/semana-07/awk-status-codes.png" alt="Distribución de status codes con awk. Una mayoría de 404 concentrada en el tiempo grita 'escaneo'." loading="lazy"/><figcaption>Distribución de status codes con <code>awk</code>. Una mayoría de 404 concentrada en el tiempo grita 'escaneo'.</figcaption></figure>
+      <figure><img src="../assets/semana-07/awk-ips-activas.png" alt="Las IPs con más requests. Una sola IP acumulando cientos de hits en segundos es la firma de una herramienta, no de una persona." loading="lazy"/><figcaption>Las IPs con más requests. Una sola IP acumulando cientos de hits en segundos es la firma de una herramienta, no de una persona.</figcaption></figure>
+      <figure><img src="../assets/semana-07/awk-ip-status.png" alt="IP + status code combinados: separa quién generó los 404. Cruzar los dos campos es lo que convierte una lista de errores en un sospechoso concreto." loading="lazy"/><figcaption>IP + status code combinados: separa quién generó los 404. Cruzar los dos campos es lo que convierte una lista de errores en un sospechoso concreto.</figcaption></figure>
+      <figure><img src="../assets/semana-07/awk-user-agents.png" alt="User-Agents en los logs. Ver sqlmap, gobuster o nikto acá es alerta inmediata de ataque en curso." loading="lazy"/><figcaption>User-Agents en los logs. Ver <code>sqlmap</code>, <code>gobuster</code> o <code>nikto</code> acá es alerta inmediata de ataque en curso.</figcaption></figure>
+      <h2 id="thm"><span class="num">§ 05</span> TryHackMe: primer room completado</h2>
+      <p>Con esa base cerré la sesión haciendo mi primer room: <strong>Offensive Security Intro</strong>. Lo elegí en inglés a propósito — toda la industria (CVEs, writeups, herramientas, certificaciones) opera en inglés y no tiene sentido re-aprender los términos después.</p>
+      <figure><img src="../assets/semana-07/thm-offensive-security-intro.png" alt="Room Offensive Security Intro en TryHackMe, completado al 100%." loading="lazy"/><figcaption>Room <b>Offensive Security Intro</b> en TryHackMe, completado al 100%.</figcaption></figure>
+      <p>El room me hizo usar <code>dirb</code> para encontrar páginas ocultas en una app bancaria falsa — <strong>exactamente lo mismo que había simulado a mano con el loop de curl</strong>, pero con una wordlist de miles de rutas. Encontré un panel de administración sin protección y transferí fondos: un <strong>IDOR</strong> (Insecure Direct Object Reference), una función que debería estar restringida pero está accesible sin autenticación. Flag: <code>BANK-HACKED</code>. Primer hack ético, en un entorno legal y controlado.</p>
+      <h2 id="confusiones"><span class="num">§ 06</span> Lo que no entendía al principio</h2>
+      <div class="table-wrap"><table><thead><tr><th>Confusión</th><th>Cómo lo resolví</th></tr></thead><tbody><tr><td>Cómo hace iptables para desbanear solo por tiempo</td><td>No lo hace: Fail2Ban guarda el timestamp en SQLite y un scheduler propio borra la regla</td></tr><tr><td>Por qué Fail2Ban no levantaba después de editar</td><td>Había copiado todo <code>jail.conf</code> en <code>jail.local</code> y quedó <code>[sshd]</code> duplicado — lo vi en foreground</td></tr><tr><td>Por qué un <code>200</code> puede ser peor que un <code>404</code></td><td>Un <code>200</code> en una ruta sensible significa que existe y respondió; el <code>404</code> es que no está</td></tr><tr><td>Qué es un IDOR</td><td>Una función restringida que quedó accesible sin autenticación — acceso directo a algo que no debería</td></tr></tbody></table></div>
+      <h2 id="profesional"><span class="num">§ 07</span> Conexión con el mundo profesional</h2>
+      <p>Fail2Ban e iptables son hardening real de cualquier servidor expuesto. El triaje de <code>access.log</code> con <code>awk</code> es pan de cada día en un SOC L1 — detectar escaneos, User-Agents de herramientas ofensivas, ráfagas de errores. Y haber atacado un IDOR de un lado me deja saber qué log mirar del otro. Ese ida y vuelta ataque/defensa es lo que quiero mostrar en el portfolio.</p>
+      <h2 id="pendiente"><span class="num">§ 08</span> Pregunta pendiente y próximo paso</h2>
+      <p>La ruta quedó clara: seguir el path de TryHackMe (Cyber Security 101 → Jr Penetration Tester → SOC Level 1) y después HackTheBox. Pero antes de seguir sumando salas, tocaba ordenar la casa: <strong>gestionar bien mis propias credenciales</strong> con un gestor de contraseñas serio.</p>
+
+      <div class="sign-off">— fv</div>
+    </div>
+  </div>
+</div>
+
+<div class="week-nav">
+  <a href="semana-06.html">← Semana 06 · Forense de logs</a>
+  <a href="semana-08.html">Semana 08 · Gestores de contraseñas →</a>
+</div>
+
+<footer>
+  <div class="footer-left">
+    <svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <defs><clipPath id="cf"><path d="M0 0 H96 L120 24 V120 H0 Z"/></clipPath></defs>
+      <g clip-path="url(#cf)">
+        <rect width="120" height="120" fill="#0f1f1c"/>
+        <rect width="120" height="120" fill="none" stroke="#34d4c2" stroke-width="5"/>
+        <text x="60" y="78" font-family="Syne,sans-serif" font-size="58" font-weight="800" fill="#34d4c2" text-anchor="middle">fv</text>
+        <rect x="14" y="100" width="14" height="3" fill="#34d4c2"/>
+      </g>
+    </svg>
+    <div>
+      <div class="footer-name">franco videla</div>
+      <div class="footer-sub">autodidacta · buenos aires, ar · 2025–</div>
+    </div>
+  </div>
+  <div class="footer-right">
+    <div>© 2026 franco videla</div>
+    <div>contenido bajo cc-by-sa 4.0</div>
+  </div>
+</footer>
+
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+}, { threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+setTimeout(() => document.querySelectorAll('.article-wrap .reveal').forEach(el => el.classList.add('visible')), 100);
+</script>
+</body>
+</html>

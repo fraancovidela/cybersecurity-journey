@@ -131,6 +131,12 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
 .reveal-delay-1{transition-delay:.1s}.reveal-delay-2{transition-delay:.2s}
 
 @media(max-width:900px){header{padding:0 24px}.status-badge{display:none}.article-wrap{padding:90px 24px 60px}.article-body{grid-template-columns:1fr}.toc{position:static;margin-bottom:40px}.week-nav{padding:24px}.footer{padding:32px 24px;flex-direction:column;gap:16px;text-align:center}}
+
+/* FIGURES (screenshots) */
+figure { margin: 28px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-code); }
+figure img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--border); }
+figcaption { padding: 12px 16px; font-family: var(--ff-mono); font-size: 11.5px; line-height: 1.55; color: var(--text-muted); }
+figcaption b { color: var(--text-sec); font-weight: 500; }
 </style>
 </head>
 <body>
@@ -160,110 +166,46 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
     fase 1 completa
   </div>
 </header>
-
 <div class="article-wrap">
   <div class="article-meta reveal">
-    <span>Semana 06</span>
+    <span>Semana 09</span>
     <span class="sep">/</span>
-    <span>Forense · Detección · Bash</span>
+    <span>Criptografía · TLS · Threat Modeling</span>
   </div>
 
-  <h1 class="reveal reveal-delay-1">Forense de logs y <em>detección activa.</em></h1>
-  <p class="lede reveal reveal-delay-2">Esta semana pasé de analizar cosas en modo lectura a construir herramientas que detectan cosas solas. La diferencia es más grande de lo que esperaba.</p>
+  <h1 class="reveal reveal-delay-1">Criptografía aplicada y <em>threat modeling.</em></h1>
+  <p class="lede reveal reveal-delay-2">El cierre teórico de la Fase 1. Dejé de usar herramientas de cifrado a ciegas y entendí qué pasa por debajo: hashing, derivación de claves, RSA, TLS y por qué un padding oracle rompe la confidencialidad sin romper AES. Todo con la terminal, no con diapositivas.</p>
 
   <div class="article-body">
     <nav class="toc reveal">
       <div class="toc-label">En esta nota</div>
-      <ol>
-        <li><a href="#backdoor">Backdoor en tiempo real</a></li>
-        <li><a href="#triage">Script de triaje</a></li>
-        <li><a href="#logs">Forense de logs</a></li>
-        <li><a href="#ssh">SSH brute force</a></li>
-        <li><a href="#conceptos">Conceptos clave</a></li>
-        <li><a href="#confusiones">Lo que no entendía</a></li>
-        <li><a href="#pendiente">Pregunta pendiente</a></li>
-      </ol>
+      <ol><li><a href="#hashing">Hashing: la calle de una sola mano</a></li><li><a href="#kdf">KDF vs hashing: por qué no hay 'recuperar contraseña'</a></li><li><a href="#simetrico">Encoding, simétrico y asimétrico</a></li><li><a href="#tls">Inspeccionar un certificado TLS real</a></li><li><a href="#threat">Threat modeling: la tríada CIA y STRIDE</a></li><li><a href="#confusiones">Lo que no entendía al principio</a></li><li><a href="#profesional">Conexión con el mundo profesional</a></li><li><a href="#pendiente">Pregunta pendiente y próximo paso</a></li></ol>
     </nav>
 
     <div class="prose reveal reveal-delay-1">
 
-      <h2 id="backdoor"><span class="num">§ 01</span> Backdoor en tiempo real</h2>
-      <p>Arranqué la semana simulando un proceso malicioso con <code>nc -lvnp 9999</code> en mi VM. El objetivo era encontrarlo como si no supiera que estaba ahí. Usé <code>lsof -i :9999</code> para identificar el proceso dueño del puerto, tracé el árbol de padres con <code>ps auxf</code>, e inspeccioné el binario real via <code>/proc/&lt;PID&gt;/exe</code>.</p>
-      <p>Algo que me llamó la atención: el proceso aparecía dos veces en <code>ss</code>. Tardé un rato en entender por qué. Tiene dos file descriptors simultáneos — <code>fd=3</code> para seguir escuchando y <code>fd=4</code> para mantener la conexión activa.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">~/scripts/<b>triage-rapido.sh</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># detectar proceso dueño de un puerto</span></span><span class="ln"><span class="tok-fn">lsof</span> -i :<span class="tok-num">9999</span></span><span class="ln"></span><span class="ln"><span class="tok-cmt"># inspeccionar el binario real detrás del PID</span></span><span class="ln"><span class="tok-fn">ls</span> -la /proc/<span class="tok-var">&lt;PID&gt;</span>/exe</span><span class="ln"><span class="tok-fn">cat</span> /proc/<span class="tok-var">&lt;PID&gt;</span>/cmdline</span></div>
-        </div>
-      </div>
-
-      <h2 id="triage"><span class="num">§ 02</span> Script de triaje</h2>
-      <p>Construí <code>triage.sh</code> desde cero. Revisa procesos por CPU, conexiones establecidas, ejecutables en <code>/tmp</code>, binarios SUID y persistencia en cron. Al final genera un reporte con timestamp y lo manda por email via <code>msmtp</code>.</p>
-      <p>El problema más frustrante fue un loop infinito cuando intenté que el script se llamara a sí mismo. La solución fue reorganizar todo en funciones internas llamadas secuencialmente desde un <code>main()</code>.</p>
-
-      <div class="callout">
-        <span class="callout-label">↳ Aprendizaje de diseño</span>
-        <p>Las credenciales viven en archivos con <code>chmod 600</code>, nunca hardcodeadas en el script. Parece obvio escrito así, pero es fácil ignorarlo cuando estás probando rápido.</p>
-      </div>
-
-      <h2 id="logs"><span class="num">§ 03</span> Forense de logs</h2>
-      <p>Generé evidencia real en mi Ubuntu 24.04 — intentos fallidos de sudo, acceso a <code>/etc/shadow</code> — y la rastreé en <code>auth.log</code> y <code>journalctl</code> hasta construir una timeline completa del incidente.</p>
-      <p>Un detalle que no esperaba: <code>grep</code> en logs modernos de Ubuntu devolvía "coincidencia en fichero binario". Ubuntu 24.04 escribe partes binarias en los logs. Se resuelve con <code>-a</code>, o usando <code>journalctl</code> directamente.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">/var/log/<b>auth.log</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># buscar en logs con partes binarias</span></span><span class="ln"><span class="tok-fn">grep</span> -aE <span class="tok-str">"Failed|Invalid"</span> /var/log/auth.log</span><span class="ln"></span><span class="ln"><span class="tok-fn">journalctl</span> --since <span class="tok-str">"2026-05-01"</span> --until <span class="tok-str">"2026-05-02"</span></span></div>
-        </div>
-      </div>
-
-      <h2 id="ssh"><span class="num">§ 04</span> SSH brute force + detector</h2>
-      <p>Simulé 200 intentos de login fallidos contra mi VM con un loop <code>for</code> + <code>ssh</code>. Después construí el detector: extrae IPs con <code>awk</code>, cuenta con <code>uniq -c</code>, bloquea via <code>ufw deny</code> al superar el umbral, notifica por email. Lo automaticé con cron cada 5 minutos.</p>
-      <p>El problema más raro: el email funcionaba manual pero desde cron no salía nada. Cron hereda el entorno del usuario ejecutor — mover la tarea al crontab de root resolvió el acceso a <code>.msmtprc</code>.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">~/scripts/<b>ssh-brute-detector.sh</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># extraer IPs con más de N intentos fallidos</span></span><span class="ln"><span class="tok-fn">grep</span> <span class="tok-str">"Failed password"</span> /var/log/auth.log \</span><span class="ln">  | <span class="tok-fn">awk</span> <span class="tok-str">'{print $11}'</span> \</span><span class="ln">  | <span class="tok-fn">sort</span> | <span class="tok-fn">uniq</span> -c | <span class="tok-fn">sort</span> -rn \</span><span class="ln">  | <span class="tok-fn">awk</span> <span class="tok-str">'$1 > 10 {print $2}'</span></span><span class="ln"></span><span class="ln"><span class="tok-cmt"># bloquear con UFW</span></span><span class="ln"><span class="tok-fn">ufw</span> deny from <span class="tok-var">$IP</span></span></div>
-        </div>
-      </div>
-
-      <h2 id="conceptos"><span class="num">§ 05</span> Conceptos clave</h2>
-      <p><strong>Separar código de configuración.</strong> Las credenciales en archivos con permisos restringidos, nunca en el script. Cada proceso hereda el entorno del usuario que lo lanza — eso explica el 80% de los problemas raros con scripts automatizados.</p>
-      <p><strong>Baseline.</strong> Saber qué es normal en un sistema es el prerequisito para identificar qué es realmente anómalo. Sin eso, cualquier proceso legítimo parece sospechoso.</p>
-
+      <h2 id="hashing"><span class="num">§ 01</span> Hashing: la calle de una sola mano</h2>
+      <p>Lo primero que desarmé: un hash <strong>no se invierte</strong>. El sistema no 'descifra' tu contraseña — rehashea lo que ingresás y lo compara contra el hash guardado. Generé MD5, SHA-256 y SHA-512 del mismo string y confirmé el <strong>efecto avalancha</strong>: cambiar un solo carácter da un hash completamente distinto.</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div><div class="code-lines"><span class="ln"><span class="tok-cmt"># el efecto avalancha: un carácter cambia todo el hash</span></span><span class="ln">echo -n 'password'  | sha256sum</span><span class="ln">echo -n 'Password'  | sha256sum</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># simular el formato de /etc/shadow sin tocar el sistema real</span></span><span class="ln">python3 -c "import crypt; print(crypt.crypt('mipass', crypt.mksalt(crypt.METHOD_SHA512)))"</span></div></div></div>
+      <h2 id="kdf"><span class="num">§ 02</span> KDF vs hashing: por qué no hay 'recuperar contraseña'</h2>
+      <p>Acá cerré la pregunta que me traje de la semana 08. KeePassXC no usa hashing para abrir el vault, usa una <strong>KDF (Argon2d)</strong>: convierte la passphrase directamente en la clave AES-256. No la compara contra nada guardado — la <em>deriva</em>. Por eso no hay recuperación posible: no existe ningún lado donde la clave esté guardada, solo se puede volver a derivar desde la passphrase.</p>
+      <p>Y Argon2 es lento y pesado a propósito: además de iterar, consume RAM configurable. Una GPU tiene miles de núcleos pero poca RAM por núcleo, así que no puede paralelizar el ataque de fuerza bruta como haría con un hash común.</p>
+      <h2 id="simetrico"><span class="num">§ 03</span> Encoding, simétrico y asimétrico</h2>
+      <p>Separé tres cosas que al principio mezclaba: <strong>encoding</strong> (Base64, reversible sin clave), <strong>cifrado simétrico</strong> (AES, misma clave para cifrar y descifrar) y <strong>asimétrico</strong> (RSA, par de claves pública/privada). Los probé todos con openssl.</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div><div class="code-lines"><span class="ln"><span class="tok-cmt"># simétrico: AES-256-CBC, misma clave las dos veces</span></span><span class="ln">openssl enc -aes-256-cbc -pbkdf2 -in mensaje.txt -out mensaje.enc</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># asimétrico: generar el par RSA</span></span><span class="ln">openssl genrsa -out privada.pem 2048</span><span class="ln">openssl rsa -in privada.pem -pubout -out publica.pem</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># cifrar con la pública, descifrar con la privada</span></span><span class="ln">openssl rsautl -encrypt -inkey publica.pem -pubin -in plain.txt -out cif.bin</span><span class="ln">openssl rsautl -decrypt -inkey privada.pem -in cif.bin</span></div></div></div>
+      <p>La evidencia más clara de que la asimetría es real y no un dibujo: intenté a propósito descifrar con la clave pública y el sistema lo rechazó con un error explícito. Esa falla controlada valió más que cualquier explicación.</p>
+      <h2 id="tls"><span class="num">§ 04</span> Inspeccionar un certificado TLS real</h2>
+      <p>Bajé la teoría a algo de producción: le miré el certificado a google.com con openssl. Ver el Issuer, la vigencia y a quién fue emitido es un chequeo de rutina para detectar un certificado autofirmado o vencido.</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span></div><div class="code-lines"><span class="ln">echo | openssl s_client -connect google.com:443 2&gt;/dev/null \</span><span class="ln">  | openssl x509 -noout -text \</span><span class="ln">  | grep -E 'Subject:|Issuer:|Not After'</span></div></div></div>
+      <h2 id="threat"><span class="num">§ 05</span> Threat modeling: la tríada CIA y STRIDE</h2>
+      <p>La otra mitad de la sesión fue teoría de análisis de amenazas. Toda la seguridad gira alrededor de tres propiedades — <strong>Confidentiality, Integrity, Availability</strong> (tríada CIA) — y todo ataque cae en una o más categorías de <strong>STRIDE</strong>. Lo que me lo hizo concreto: no es abstracto, cada herramienta que ya uso ataca uno de estos problemas. Fail2Ban protege Availability, AES protege Confidentiality, un hash protege Integrity.</p>
+      <p>El threat modeling con STRIDE es lo primero que hace un pentester o auditor antes de tocar una herramienta: mapear activos, atacantes y amenazas. Mapear antes de atacar.</p>
       <h2 id="confusiones"><span class="num">§ 06</span> Lo que no entendía al principio</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Confusión</th><th>Cómo lo resolví</th></tr></thead>
-          <tbody>
-            <tr><td>Por qué excluir loopback al buscar conexiones sospechosas</td><td>El loopback es tráfico interno — nunca sale a la red</td></tr>
-            <tr><td>Por qué el mismo PID aparece dos veces en <code>ss</code></td><td>Dos file descriptors: fd=3 escucha, fd=4 mantiene la conexión</td></tr>
-            <tr><td>Por qué un virus sigue corriendo si borrás el ejecutable</td><td>El proceso ya está en RAM; usa cron para reaparecer al reiniciar</td></tr>
-            <tr><td>Por qué <code>grep</code> devolvía "fichero binario"</td><td>Ubuntu 24.04 escribe logs con partes binarias — se resuelve con <code>-a</code></td></tr>
-            <tr><td>Por qué el email funcionaba manual pero no desde cron</td><td>Cron hereda el entorno del usuario — mover a crontab de root solucionó el acceso a <code>.msmtprc</code></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h2 id="pendiente"><span class="num">§ 07</span> Pregunta pendiente</h2>
-      <p>¿Cómo hace Fail2Ban para bloquear IPs automáticamente por tiempo limitado y desbloquearlas solas sin intervención humana? Lo que armé bloquea, pero no desbloquea solo.</p>
+      <div class="table-wrap"><table><thead><tr><th>Confusión</th><th>Cómo lo resolví</th></tr></thead><tbody><tr><td>¿El hash se puede invertir para recuperar el password?</td><td>No, es one-way. El sistema rehashea el input y compara — nunca desarma el original</td></tr><tr><td>¿La clave AES de KeePassXC es un hash?</td><td>No: Argon2d es una KDF, su output se usa directo como clave, no se compara contra nada</td></tr><tr><td>¿Por qué Argon2 es más pesado que bcrypt?</td><td>Consume RAM configurable — una GPU no puede paralelizar el ataque eficientemente</td></tr><tr><td>¿Qué pasa si AES-256 o Argon2 se rompen algún día?</td><td>Sin el <code>.kdbx</code> robado no hay nada que atacar; romper la KDF o el cifrado abarata el ataque, no entrega la clave</td></tr></tbody></table></div>
+      <h2 id="profesional"><span class="num">§ 07</span> Conexión con el mundo profesional</h2>
+      <p>Esto es lo que separa a alguien que <em>usa</em> herramientas de seguridad de alguien que entiende <em>por qué</em> funcionan. Entender que un <strong>padding oracle</strong> rompe la confidencialidad sin romper AES es el tipo de razonamiento que se evalúa en eJPT y OSCP, y está detrás de vulnerabilidades reales documentadas como POODLE y Lucky Thirteen. Inspeccionar un certificado TLS o correr un STRIDE sobre un sistema son tareas de rutina del laburo.</p>
+      <h2 id="pendiente"><span class="num">§ 08</span> Pregunta pendiente y próximo paso</h2>
+      <p>Me quedó una pregunta fina: en un padding oracle, ¿por qué el atacante ataca primero el último byte del bloque y no el primero? Con eso y unos challenges de CryptoHack pendientes, la <strong>Fase 1 (Fundamentos) queda cerrada</strong>. Lo que viene es Fase 2: Blue Team con foco en SIEM y análisis de logs a escala — y ahí entra la IA aplicada a la detección, que es el diferencial que quiero construir.</p>
 
       <div class="sign-off">— fv</div>
     </div>
@@ -271,8 +213,8 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
 </div>
 
 <div class="week-nav">
-  <a href="semana-05.html">← Semana 05 · Correlación de procesos y red</a>
-  <a href="semana-07.html">Semana 07 · Fail2Ban y forense web →</a>
+  <a href="semana-08.html">← Semana 08 · Gestores de contraseñas</a>
+  <a href="../index.html">Ver todas las notas →</a>
 </div>
 
 <footer>

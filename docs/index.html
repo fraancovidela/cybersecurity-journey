@@ -115,7 +115,7 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
   </nav>
   <div class="status-badge">
     <span class="status-dot"></span>
-    semana 07 en curso
+    fase 1 completa
   </div>
 </header>
 
@@ -124,8 +124,8 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
   <h1 class="reveal reveal-delay-1">Notas<br/>técnicas<br/><em>semanales.</em></h1>
   <p class="hero-sub reveal reveal-delay-2">Registro público de lo que aprendo cada semana. Sin poses, con fechas, con errores incluidos.</p>
   <div class="hero-stats reveal reveal-delay-3">
-    <div class="stat"><span class="stat-num">07</span><span class="stat-label">Semanas</span></div>
-    <div class="stat"><span class="stat-num">12+</span><span class="stat-label">Scripts</span></div>
+    <div class="stat"><span class="stat-num">09</span><span class="stat-label">Semanas</span></div>
+    <div class="stat"><span class="stat-num">15+</span><span class="stat-label">Scripts</span></div>
     <div class="stat"><span class="stat-num">100%</span><span class="stat-label">Autodidacta</span></div>
   </div>
 </section>
@@ -133,30 +133,83 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
 <div class="divider reveal">
   <span class="divider-label">Semanas publicadas</span>
   <div class="divider-line"></div>
-  <span class="divider-label">02 entradas</span>
+  <span class="divider-label">09 entradas</span>
 </div>
 
 <section class="notes-section">
   <div class="notes-grid">
 
-    <a href="semanas/semana-06.html" class="card-featured reveal">
+    <a href="semanas/semana-09.html" class="card-featured reveal">
       <div class="card-week">
-        <span>Semana 06</span><span class="sep">/</span><span class="badge">más reciente</span>
+        <span>Semana 09</span><span class="sep">/</span><span class="badge">más reciente</span>
       </div>
-      <h2 class="card-title">Forense de logs y <em>detección activa.</em></h2>
-      <p class="card-desc">De analizar pasivamente a construir un detector real: backdoor simulado, triage script, SSH brute force de 200 intentos y bloqueo automático con UFW. Todo desde cero.</p>
-      <div class="card-tags">
-        <span class="chip hot">forense</span><span class="chip hot">bash scripting</span>
-        <span class="chip">logs</span><span class="chip">ssh</span><span class="chip">ufw</span><span class="chip">cron</span>
-      </div>
+      <h2 class="card-title">Criptografía aplicada y <em>threat modeling.</em></h2>
+      <p class="card-desc">Cierre de la Fase 1. Hashing, KDF (Argon2), RSA y TLS con openssl, más threat modeling con la tríada CIA y STRIDE. Entender por qué funcionan las herramientas, no solo usarlas.</p>
+      <div class="card-tags"><span class="chip hot">cripto</span><span class="chip hot">openssl</span><span class="chip">rsa</span><span class="chip">tls</span><span class="chip">stride</span><span class="chip">argon2</span></div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <a href="semanas/semana-08.html" class="card reveal reveal-delay-1">
+      <div class="card-week"><span>Semana 08</span></div>
+      <h3 class="card-title">Gestores de contraseñas — <em>KeePassXC.</em></h3>
+      <p class="card-desc">Vault propio desde cero: KDBX 4, AES-256, Argon2d, passphrase Diceware, key file como 2º factor, 2FA y sync multi-dispositivo. Zero-knowledge de punta a punta.</p>
+      <div class="card-tags"><span class="chip hot">keepassxc</span><span class="chip">2fa</span><span class="chip">aes-256</span><span class="chip">credenciales</span></div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <a href="semanas/semana-07.html" class="card reveal reveal-delay-2">
+      <div class="card-week"><span>Semana 07</span></div>
+      <h3 class="card-title">Fail2Ban, forense web y <em>primer hack ético.</em></h3>
+      <p class="card-desc">Cómo Fail2Ban desbanea solo, triaje de access.log de Apache con awk, simulación y detección de un escaneo de directorios, y el primer room de TryHackMe (IDOR). Con capturas de todo.</p>
+      <div class="card-tags"><span class="chip hot">fail2ban</span><span class="chip hot">forense web</span><span class="chip">awk</span><span class="chip">apache</span><span class="chip">tryhackme</span><span class="chip">idor</span></div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <a href="semanas/semana-06.html" class="card reveal reveal-delay-3">
+      <div class="card-week"><span>Semana 06</span></div>
+      <h3 class="card-title">Forense de logs y <em>detección activa.</em></h3>
+      <p class="card-desc">De analizar pasivamente a construir un detector real: backdoor simulado, triage script, SSH brute force de 200 intentos y bloqueo automático con UFW.</p>
+      <div class="card-tags"><span class="chip hot">forense</span><span class="chip">bash</span><span class="chip">logs</span><span class="chip">ssh</span><span class="chip">ufw</span><span class="chip">cron</span></div>
       <div class="card-arrow">→</div>
     </a>
 
     <a href="semanas/semana-05.html" class="card reveal reveal-delay-1">
       <div class="card-week"><span>Semana 05</span></div>
       <h3 class="card-title">Correlación de <em>procesos y red.</em></h3>
-      <p class="card-desc">Cómo identificar qué programa está detrás de cada conexión usando /proc, ss y lsof. Checklist de triage de 7 pasos.</p>
+      <p class="card-desc">Qué programa está detrás de cada conexión usando /proc, ss y lsof. Checklist de triaje de 7 pasos.</p>
       <div class="card-tags"><span class="chip">linux</span><span class="chip">procesos</span><span class="chip">red</span><span class="chip">/proc</span></div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <a href="semanas/semana-04.html" class="card reveal reveal-delay-2">
+      <div class="card-week"><span>Semana 04</span></div>
+      <h3 class="card-title">OverTheWire <em>Bandit.</em></h3>
+      <p class="card-desc">34 niveles de Linux puro: lectura de archivos, find avanzado, SSH con llaves, netcat, openssl, cron y un brute force propio en bash.</p>
+      <div class="card-tags"><span class="chip hot">ctf</span><span class="chip">bandit</span><span class="chip">ssh</span><span class="chip">nmap</span></div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <a href="semanas/semana-03.html" class="card reveal reveal-delay-3">
+      <div class="card-week"><span>Semana 03</span></div>
+      <h3 class="card-title">SUID y <em>escalada de privilegios.</em></h3>
+      <p class="card-desc">El bit SUID explicado de los dos lados: laboratorio vulnerable propio, exploit de una línea con find, y la mirada del Blue Team sobre qué deja el atacante.</p>
+      <div class="card-tags"><span class="chip hot">privesc</span><span class="chip">suid</span><span class="chip">gtfobins</span><span class="chip">blue team</span></div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <a href="semanas/semana-02.html" class="card reveal reveal-delay-1">
+      <div class="card-week"><span>Semana 02</span></div>
+      <h3 class="card-title">Linux desde cero: <em>comandos y permisos.</em></h3>
+      <p class="card-desc">Orientarse en un sistema como un analista, las carpetas que importan, y el sistema de permisos octal — la base de todo lo que vino después.</p>
+      <div class="card-tags"><span class="chip">linux</span><span class="chip">permisos</span><span class="chip">bash</span><span class="chip">hardening</span></div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <a href="semanas/semana-01.html" class="card reveal reveal-delay-2">
+      <div class="card-week"><span>Semana 01</span></div>
+      <h3 class="card-title">Redes, protocolos y <em>análisis de tráfico.</em></h3>
+      <p class="card-desc">OSI y TCP/IP, el handshake, DNS y HTTP/HTTPS, los ataques de capa 7, y 5 misiones de Wireshark leyendo tráfico real en texto plano.</p>
+      <div class="card-tags"><span class="chip hot">redes</span><span class="chip hot">wireshark</span><span class="chip">tcp/ip</span><span class="chip">dns</span><span class="chip">tls</span></div>
       <div class="card-arrow">→</div>
     </a>
 

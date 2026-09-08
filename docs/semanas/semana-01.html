@@ -131,6 +131,12 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
 .reveal-delay-1{transition-delay:.1s}.reveal-delay-2{transition-delay:.2s}
 
 @media(max-width:900px){header{padding:0 24px}.status-badge{display:none}.article-wrap{padding:90px 24px 60px}.article-body{grid-template-columns:1fr}.toc{position:static;margin-bottom:40px}.week-nav{padding:24px}.footer{padding:32px 24px;flex-direction:column;gap:16px;text-align:center}}
+
+/* FIGURES (screenshots) */
+figure { margin: 28px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-code); }
+figure img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--border); }
+figcaption { padding: 12px 16px; font-family: var(--ff-mono); font-size: 11.5px; line-height: 1.55; color: var(--text-muted); }
+figcaption b { color: var(--text-sec); font-weight: 500; }
 </style>
 </head>
 <body>
@@ -160,110 +166,49 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
     fase 1 completa
   </div>
 </header>
-
 <div class="article-wrap">
   <div class="article-meta reveal">
-    <span>Semana 06</span>
+    <span>Semana 01</span>
     <span class="sep">/</span>
-    <span>Forense · Detección · Bash</span>
+    <span>Redes · Protocolos · Wireshark</span>
   </div>
 
-  <h1 class="reveal reveal-delay-1">Forense de logs y <em>detección activa.</em></h1>
-  <p class="lede reveal reveal-delay-2">Esta semana pasé de analizar cosas en modo lectura a construir herramientas que detectan cosas solas. La diferencia es más grande de lo que esperaba.</p>
+  <h1 class="reveal reveal-delay-1">Redes, protocolos y <em>análisis de tráfico.</em></h1>
+  <p class="lede reveal reveal-delay-2">Empecé por lo más básico y lo que casi nadie mira de cerca: cómo viajan los datos por una red, y qué se puede leer de ellos con Wireshark abierto. La primera sorpresa fue cuánto habla mi PC sola.</p>
 
   <div class="article-body">
     <nav class="toc reveal">
       <div class="toc-label">En esta nota</div>
-      <ol>
-        <li><a href="#backdoor">Backdoor en tiempo real</a></li>
-        <li><a href="#triage">Script de triaje</a></li>
-        <li><a href="#logs">Forense de logs</a></li>
-        <li><a href="#ssh">SSH brute force</a></li>
-        <li><a href="#conceptos">Conceptos clave</a></li>
-        <li><a href="#confusiones">Lo que no entendía</a></li>
-        <li><a href="#pendiente">Pregunta pendiente</a></li>
-      </ol>
+      <ol><li><a href="#osi">El modelo OSI y TCP/IP</a></li><li><a href="#tcp">TCP vs UDP y el handshake de 3 pasos</a></li><li><a href="#dns">DNS — la guía telefónica sin candado</a></li><li><a href="#https">HTTP vs HTTPS y el SNI</a></li><li><a href="#capa7">Los ataques de capa 7</a></li><li><a href="#wireshark">Wireshark en la práctica — 5 misiones</a></li><li><a href="#confusiones">Lo que no entendía al principio</a></li><li><a href="#profesional">Conexión con el mundo profesional</a></li><li><a href="#pendiente">Pregunta pendiente y próximo paso</a></li></ol>
     </nav>
 
     <div class="prose reveal reveal-delay-1">
 
-      <h2 id="backdoor"><span class="num">§ 01</span> Backdoor en tiempo real</h2>
-      <p>Arranqué la semana simulando un proceso malicioso con <code>nc -lvnp 9999</code> en mi VM. El objetivo era encontrarlo como si no supiera que estaba ahí. Usé <code>lsof -i :9999</code> para identificar el proceso dueño del puerto, tracé el árbol de padres con <code>ps auxf</code>, e inspeccioné el binario real via <code>/proc/&lt;PID&gt;/exe</code>.</p>
-      <p>Algo que me llamó la atención: el proceso aparecía dos veces en <code>ss</code>. Tardé un rato en entender por qué. Tiene dos file descriptors simultáneos — <code>fd=3</code> para seguir escuchando y <code>fd=4</code> para mantener la conexión activa.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">~/scripts/<b>triage-rapido.sh</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># detectar proceso dueño de un puerto</span></span><span class="ln"><span class="tok-fn">lsof</span> -i :<span class="tok-num">9999</span></span><span class="ln"></span><span class="ln"><span class="tok-cmt"># inspeccionar el binario real detrás del PID</span></span><span class="ln"><span class="tok-fn">ls</span> -la /proc/<span class="tok-var">&lt;PID&gt;</span>/exe</span><span class="ln"><span class="tok-fn">cat</span> /proc/<span class="tok-var">&lt;PID&gt;</span>/cmdline</span></div>
-        </div>
-      </div>
-
-      <h2 id="triage"><span class="num">§ 02</span> Script de triaje</h2>
-      <p>Construí <code>triage.sh</code> desde cero. Revisa procesos por CPU, conexiones establecidas, ejecutables en <code>/tmp</code>, binarios SUID y persistencia en cron. Al final genera un reporte con timestamp y lo manda por email via <code>msmtp</code>.</p>
-      <p>El problema más frustrante fue un loop infinito cuando intenté que el script se llamara a sí mismo. La solución fue reorganizar todo en funciones internas llamadas secuencialmente desde un <code>main()</code>.</p>
-
-      <div class="callout">
-        <span class="callout-label">↳ Aprendizaje de diseño</span>
-        <p>Las credenciales viven en archivos con <code>chmod 600</code>, nunca hardcodeadas en el script. Parece obvio escrito así, pero es fácil ignorarlo cuando estás probando rápido.</p>
-      </div>
-
-      <h2 id="logs"><span class="num">§ 03</span> Forense de logs</h2>
-      <p>Generé evidencia real en mi Ubuntu 24.04 — intentos fallidos de sudo, acceso a <code>/etc/shadow</code> — y la rastreé en <code>auth.log</code> y <code>journalctl</code> hasta construir una timeline completa del incidente.</p>
-      <p>Un detalle que no esperaba: <code>grep</code> en logs modernos de Ubuntu devolvía "coincidencia en fichero binario". Ubuntu 24.04 escribe partes binarias en los logs. Se resuelve con <code>-a</code>, o usando <code>journalctl</code> directamente.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">/var/log/<b>auth.log</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># buscar en logs con partes binarias</span></span><span class="ln"><span class="tok-fn">grep</span> -aE <span class="tok-str">"Failed|Invalid"</span> /var/log/auth.log</span><span class="ln"></span><span class="ln"><span class="tok-fn">journalctl</span> --since <span class="tok-str">"2026-05-01"</span> --until <span class="tok-str">"2026-05-02"</span></span></div>
-        </div>
-      </div>
-
-      <h2 id="ssh"><span class="num">§ 04</span> SSH brute force + detector</h2>
-      <p>Simulé 200 intentos de login fallidos contra mi VM con un loop <code>for</code> + <code>ssh</code>. Después construí el detector: extrae IPs con <code>awk</code>, cuenta con <code>uniq -c</code>, bloquea via <code>ufw deny</code> al superar el umbral, notifica por email. Lo automaticé con cron cada 5 minutos.</p>
-      <p>El problema más raro: el email funcionaba manual pero desde cron no salía nada. Cron hereda el entorno del usuario ejecutor — mover la tarea al crontab de root resolvió el acceso a <code>.msmtprc</code>.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">~/scripts/<b>ssh-brute-detector.sh</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># extraer IPs con más de N intentos fallidos</span></span><span class="ln"><span class="tok-fn">grep</span> <span class="tok-str">"Failed password"</span> /var/log/auth.log \</span><span class="ln">  | <span class="tok-fn">awk</span> <span class="tok-str">'{print $11}'</span> \</span><span class="ln">  | <span class="tok-fn">sort</span> | <span class="tok-fn">uniq</span> -c | <span class="tok-fn">sort</span> -rn \</span><span class="ln">  | <span class="tok-fn">awk</span> <span class="tok-str">'$1 > 10 {print $2}'</span></span><span class="ln"></span><span class="ln"><span class="tok-cmt"># bloquear con UFW</span></span><span class="ln"><span class="tok-fn">ufw</span> deny from <span class="tok-var">$IP</span></span></div>
-        </div>
-      </div>
-
-      <h2 id="conceptos"><span class="num">§ 05</span> Conceptos clave</h2>
-      <p><strong>Separar código de configuración.</strong> Las credenciales en archivos con permisos restringidos, nunca en el script. Cada proceso hereda el entorno del usuario que lo lanza — eso explica el 80% de los problemas raros con scripts automatizados.</p>
-      <p><strong>Baseline.</strong> Saber qué es normal en un sistema es el prerequisito para identificar qué es realmente anómalo. Sin eso, cualquier proceso legítimo parece sospechoso.</p>
-
-      <h2 id="confusiones"><span class="num">§ 06</span> Lo que no entendía al principio</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Confusión</th><th>Cómo lo resolví</th></tr></thead>
-          <tbody>
-            <tr><td>Por qué excluir loopback al buscar conexiones sospechosas</td><td>El loopback es tráfico interno — nunca sale a la red</td></tr>
-            <tr><td>Por qué el mismo PID aparece dos veces en <code>ss</code></td><td>Dos file descriptors: fd=3 escucha, fd=4 mantiene la conexión</td></tr>
-            <tr><td>Por qué un virus sigue corriendo si borrás el ejecutable</td><td>El proceso ya está en RAM; usa cron para reaparecer al reiniciar</td></tr>
-            <tr><td>Por qué <code>grep</code> devolvía "fichero binario"</td><td>Ubuntu 24.04 escribe logs con partes binarias — se resuelve con <code>-a</code></td></tr>
-            <tr><td>Por qué el email funcionaba manual pero no desde cron</td><td>Cron hereda el entorno del usuario — mover a crontab de root solucionó el acceso a <code>.msmtprc</code></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h2 id="pendiente"><span class="num">§ 07</span> Pregunta pendiente</h2>
-      <p>¿Cómo hace Fail2Ban para bloquear IPs automáticamente por tiempo limitado y desbloquearlas solas sin intervención humana? Lo que armé bloquea, pero no desbloquea solo.</p>
+      <h2 id="osi"><span class="num">§ 01</span> El modelo OSI y TCP/IP</h2>
+      <p>Arranqué con el modelo OSI porque es el mapa que todo el mundo usa para hablar de redes. Son 7 capas y cada una tiene una responsabilidad: de los bits en el cable (capa 1) hasta lo que ve el usuario en el navegador (capa 7). Lo que me quedó grabado es que la mayoría de los ataques viven en las capas 3, 4 y 7 — que es justo donde están los controles defensivos.</p>
+      <p>OSI es la teoría; <strong>TCP/IP es lo que internet usa de verdad</strong>. Cuatro capas en vez de siete, pero los dos protagonistas están en la capa de transporte: TCP y UDP.</p>
+      <div class="table-wrap"><table><thead><tr><th>Capa</th><th>Protocolos y función</th></tr></thead><tbody><tr><td>7 · Aplicación</td><td>HTTP, HTTPS, DNS, FTP — lo que ve el usuario</td></tr><tr><td>4 · Transporte</td><td>TCP, UDP, puertos — entrega confiable o rápida</td></tr><tr><td>3 · Red</td><td>IP, routers — dirección lógica</td></tr><tr><td>2 · Enlace</td><td>Ethernet, MAC — dirección física local</td></tr></tbody></table></div>
+      <h2 id="tcp"><span class="num">§ 02</span> TCP vs UDP y el handshake de 3 pasos</h2>
+      <p>TCP es orientado a conexión: antes de mandar nada hace el <strong>three-way handshake</strong> — SYN, SYN-ACK, ACK. Garantiza que los datos lleguen completos y en orden, y si un paquete se pierde lo reenvía. UDP no: no hay handshake, no verifica nada, es más rápido pero no confiable. Se usa para streaming, videollamadas, juegos y DNS.</p>
+      <p>El ataque que conecta con esto es el <strong>SYN flood</strong>: el atacante manda miles de SYN sin nunca responder el SYN-ACK, y llena la tabla de conexiones del servidor hasta tirarlo. Es un DoS clásico y de repente el handshake dejó de ser un diagrama aburrido.</p>
+      <h2 id="dns"><span class="num">§ 03</span> DNS — la guía telefónica sin candado</h2>
+      <p>DNS traduce <code>google.com</code> a una IP como <code>142.250.78.142</code>. Lo importante para seguridad: fue diseñado para ser rápido, no seguro. Las consultas viajan <strong>sin cifrar</strong>. Sobre eso se montan DNS spoofing (respuesta falsa), cache poisoning (corromper el caché del servidor) y DNS tunneling (exfiltrar datos escondidos en consultas).</p>
+      <p>Dato concreto de la práctica: mi servidor DNS es <code>181.30.140.134</code>, de Fibertel. Todas mis consultas pasan en texto plano por ahí. Verlo en Wireshark fue distinto a leerlo en un apunte.</p>
+      <h2 id="https"><span class="num">§ 04</span> HTTP vs HTTPS y el SNI</h2>
+      <p>HTTP viaja en texto plano por el puerto 80: cualquiera en la red lee exactamente qué páginas visitás y qué mandás. HTTPS es HTTP con TLS encima (puerto 443), el contenido va cifrado. Pero hay una fuga que no esperaba: el <strong>SNI</strong> (el nombre del servidor) viaja en texto plano durante el handshake TLS. O sea, HTTPS protege <em>qué</em> decís, no <em>con quién</em> hablás.</p>
+      <h2 id="capa7"><span class="num">§ 05</span> Los ataques de capa 7</h2>
+      <p>Los firewalls viejos bloqueaban puertos, pero hoy casi todo pasa por el 443, así que el tráfico malicioso se mezcla con el legítimo. Los tres que anoté:</p>
+      <ul><li><strong>SQLi</strong> — inyectar SQL en un campo que la app no valida. Escribir <code>' OR '1'='1</code> convierte la query en siempre verdadera y entrás sin contraseña.</li><li><strong>XSS</strong> — inyectar JavaScript en una página que lo muestra sin sanitizar. No ataca al servidor: ataca al navegador de la víctima usando el servidor de intermediario.</li><li><strong>DDoS de capa 7</strong> — requests HTTP legítimas pero caras de procesar. El firewall no las ve raras porque parecen normales. Se mitigan con un WAF.</li></ul>
+      <h2 id="wireshark"><span class="num">§ 06</span> Wireshark en la práctica — 5 misiones</h2>
+      <p>Acá dejé de leer y abrí la herramienta. Cinco misiones, cada una con su filtro. Los que más usé:</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span></div><div class="code-lines"><span class="ln"><span class="tok-cmt"># ver el DNS en acción</span></span><span class="ln">dns</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># leer HTTP en texto plano</span></span><span class="ln">http</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># confirmar que HTTPS cifra (pero deja ver el SNI)</span></span><span class="ln">tls</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># ver el handshake TCP</span></span><span class="ln">tcp.flags.syn == 1</span></div></div></div>
+      <p>Lo que encontré: leí una request HTTP de Avast (<code>ncc.avast.com</code>) <strong>entera, en texto plano</strong> — método, User-Agent y respuesta. Confirmé que en HTTPS el contenido es basura ilegible pero el SNI (<code>activity.windows.com</code>) se lee igual. Vi el handshake completo SYN → SYN-ACK → ACK contra Google. Y en la misión 5, sin tocar nada 30 segundos, la PC hablaba sola con Google, Microsoft, Avast y Spotify. Todo limpio, verificado en VirusTotal, pero la lección quedó.</p>
+      <h2 id="confusiones"><span class="num">§ 07</span> Lo que no entendía al principio</h2>
+      <div class="table-wrap"><table><thead><tr><th>Confusión</th><th>Cómo lo resolví</th></tr></thead><tbody><tr><td>Por qué UDP se usa si no es confiable</td><td>Para streaming/juegos la velocidad importa más que perder un paquete</td></tr><tr><td>Qué diferencia hay entre OSI y TCP/IP</td><td>OSI es el modelo teórico de 7 capas; TCP/IP es la implementación real de 4</td></tr><tr><td>Si HTTPS cifra todo, por qué se ve el sitio</td><td>El SNI viaja en texto plano en el handshake — se ve a quién te conectás</td></tr><tr><td>Una IP sin nombre DNS en <code>nslookup</code> es maliciosa?</td><td>No necesariamente, pero es señal de investigar — la crucé con VirusTotal</td></tr></tbody></table></div>
+      <h2 id="profesional"><span class="num">§ 08</span> Conexión con el mundo profesional</h2>
+      <p>Esto es literalmente lo que hace un analista cuando revisa una máquina sospechosa: quién habla con quién, cuándo, y cuántos datos intercambia. La misión 5 —capturar tráfico en reposo y clasificar cada IP— es un mini-triaje forense de red. Entender el handshake y el SNI es la base para leer después logs de un IDS o un SIEM.</p>
+      <h2 id="pendiente"><span class="num">§ 09</span> Pregunta pendiente y próximo paso</h2>
+      <p>Me quedó picando: si el SNI se ve igual, ¿cómo se protege eso? (spoiler para más adelante: ECH / Encrypted Client Hello). Lo próximo era bajar de la red al sistema: <strong>Linux y línea de comandos</strong>, que es el idioma nativo del laburo.</p>
 
       <div class="sign-off">— fv</div>
     </div>
@@ -271,8 +216,8 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
 </div>
 
 <div class="week-nav">
-  <a href="semana-05.html">← Semana 05 · Correlación de procesos y red</a>
-  <a href="semana-07.html">Semana 07 · Fail2Ban y forense web →</a>
+  <a href="../index.html">← Ver todas las notas</a>
+  <a href="semana-02.html">Semana 02 · Linux desde cero →</a>
 </div>
 
 <footer>

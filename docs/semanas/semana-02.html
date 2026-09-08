@@ -131,6 +131,12 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
 .reveal-delay-1{transition-delay:.1s}.reveal-delay-2{transition-delay:.2s}
 
 @media(max-width:900px){header{padding:0 24px}.status-badge{display:none}.article-wrap{padding:90px 24px 60px}.article-body{grid-template-columns:1fr}.toc{position:static;margin-bottom:40px}.week-nav{padding:24px}.footer{padding:32px 24px;flex-direction:column;gap:16px;text-align:center}}
+
+/* FIGURES (screenshots) */
+figure { margin: 28px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-code); }
+figure img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--border); }
+figcaption { padding: 12px 16px; font-family: var(--ff-mono); font-size: 11.5px; line-height: 1.55; color: var(--text-muted); }
+figcaption b { color: var(--text-sec); font-weight: 500; }
 </style>
 </head>
 <body>
@@ -160,110 +166,45 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
     fase 1 completa
   </div>
 </header>
-
 <div class="article-wrap">
   <div class="article-meta reveal">
-    <span>Semana 06</span>
+    <span>Semana 02</span>
     <span class="sep">/</span>
-    <span>Forense · Detección · Bash</span>
+    <span>Linux · Comandos · Permisos</span>
   </div>
 
-  <h1 class="reveal reveal-delay-1">Forense de logs y <em>detección activa.</em></h1>
-  <p class="lede reveal reveal-delay-2">Esta semana pasé de analizar cosas en modo lectura a construir herramientas que detectan cosas solas. La diferencia es más grande de lo que esperaba.</p>
+  <h1 class="reveal reveal-delay-1">Linux desde cero: <em>comandos y permisos.</em></h1>
+  <p class="lede reveal reveal-delay-2">El 96% de los servidores del mundo corre Linux, así que no había forma de esquivarlo. Dos sesiones: orientarme en el sistema como lo hace un analista, y entender el sistema de permisos —que después resultó ser la base de todo lo demás.</p>
 
   <div class="article-body">
     <nav class="toc reveal">
       <div class="toc-label">En esta nota</div>
-      <ol>
-        <li><a href="#backdoor">Backdoor en tiempo real</a></li>
-        <li><a href="#triage">Script de triaje</a></li>
-        <li><a href="#logs">Forense de logs</a></li>
-        <li><a href="#ssh">SSH brute force</a></li>
-        <li><a href="#conceptos">Conceptos clave</a></li>
-        <li><a href="#confusiones">Lo que no entendía</a></li>
-        <li><a href="#pendiente">Pregunta pendiente</a></li>
-      </ol>
+      <ol><li><a href="#orientacion">Lo primero que hace un profesional: orientarse</a></li><li><a href="#carpetas">Las carpetas que importan</a></li><li><a href="#permisos">El sistema de permisos</a></li><li><a href="#busqueda">Buscar lo que está mal configurado</a></li><li><a href="#confusiones">Lo que no entendía al principio</a></li><li><a href="#profesional">Conexión con el mundo profesional</a></li><li><a href="#pendiente">Pregunta pendiente y próximo paso</a></li></ol>
     </nav>
 
     <div class="prose reveal reveal-delay-1">
 
-      <h2 id="backdoor"><span class="num">§ 01</span> Backdoor en tiempo real</h2>
-      <p>Arranqué la semana simulando un proceso malicioso con <code>nc -lvnp 9999</code> en mi VM. El objetivo era encontrarlo como si no supiera que estaba ahí. Usé <code>lsof -i :9999</code> para identificar el proceso dueño del puerto, tracé el árbol de padres con <code>ps auxf</code>, e inspeccioné el binario real via <code>/proc/&lt;PID&gt;/exe</code>.</p>
-      <p>Algo que me llamó la atención: el proceso aparecía dos veces en <code>ss</code>. Tardé un rato en entender por qué. Tiene dos file descriptors simultáneos — <code>fd=3</code> para seguir escuchando y <code>fd=4</code> para mantener la conexión activa.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">~/scripts/<b>triage-rapido.sh</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># detectar proceso dueño de un puerto</span></span><span class="ln"><span class="tok-fn">lsof</span> -i :<span class="tok-num">9999</span></span><span class="ln"></span><span class="ln"><span class="tok-cmt"># inspeccionar el binario real detrás del PID</span></span><span class="ln"><span class="tok-fn">ls</span> -la /proc/<span class="tok-var">&lt;PID&gt;</span>/exe</span><span class="ln"><span class="tok-fn">cat</span> /proc/<span class="tok-var">&lt;PID&gt;</span>/cmdline</span></div>
-        </div>
-      </div>
-
-      <h2 id="triage"><span class="num">§ 02</span> Script de triaje</h2>
-      <p>Construí <code>triage.sh</code> desde cero. Revisa procesos por CPU, conexiones establecidas, ejecutables en <code>/tmp</code>, binarios SUID y persistencia en cron. Al final genera un reporte con timestamp y lo manda por email via <code>msmtp</code>.</p>
-      <p>El problema más frustrante fue un loop infinito cuando intenté que el script se llamara a sí mismo. La solución fue reorganizar todo en funciones internas llamadas secuencialmente desde un <code>main()</code>.</p>
-
-      <div class="callout">
-        <span class="callout-label">↳ Aprendizaje de diseño</span>
-        <p>Las credenciales viven en archivos con <code>chmod 600</code>, nunca hardcodeadas en el script. Parece obvio escrito así, pero es fácil ignorarlo cuando estás probando rápido.</p>
-      </div>
-
-      <h2 id="logs"><span class="num">§ 03</span> Forense de logs</h2>
-      <p>Generé evidencia real en mi Ubuntu 24.04 — intentos fallidos de sudo, acceso a <code>/etc/shadow</code> — y la rastreé en <code>auth.log</code> y <code>journalctl</code> hasta construir una timeline completa del incidente.</p>
-      <p>Un detalle que no esperaba: <code>grep</code> en logs modernos de Ubuntu devolvía "coincidencia en fichero binario". Ubuntu 24.04 escribe partes binarias en los logs. Se resuelve con <code>-a</code>, o usando <code>journalctl</code> directamente.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">/var/log/<b>auth.log</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># buscar en logs con partes binarias</span></span><span class="ln"><span class="tok-fn">grep</span> -aE <span class="tok-str">"Failed|Invalid"</span> /var/log/auth.log</span><span class="ln"></span><span class="ln"><span class="tok-fn">journalctl</span> --since <span class="tok-str">"2026-05-01"</span> --until <span class="tok-str">"2026-05-02"</span></span></div>
-        </div>
-      </div>
-
-      <h2 id="ssh"><span class="num">§ 04</span> SSH brute force + detector</h2>
-      <p>Simulé 200 intentos de login fallidos contra mi VM con un loop <code>for</code> + <code>ssh</code>. Después construí el detector: extrae IPs con <code>awk</code>, cuenta con <code>uniq -c</code>, bloquea via <code>ufw deny</code> al superar el umbral, notifica por email. Lo automaticé con cron cada 5 minutos.</p>
-      <p>El problema más raro: el email funcionaba manual pero desde cron no salía nada. Cron hereda el entorno del usuario ejecutor — mover la tarea al crontab de root resolvió el acceso a <code>.msmtprc</code>.</p>
-
-      <div class="code-block">
-        <div class="code-head">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-file">~/scripts/<b>ssh-brute-detector.sh</b></span>
-          <span class="code-lang">bash</span>
-        </div>
-        <div class="code-body">
-          <div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
-          <div class="code-lines"><span class="ln"><span class="tok-cmt"># extraer IPs con más de N intentos fallidos</span></span><span class="ln"><span class="tok-fn">grep</span> <span class="tok-str">"Failed password"</span> /var/log/auth.log \</span><span class="ln">  | <span class="tok-fn">awk</span> <span class="tok-str">'{print $11}'</span> \</span><span class="ln">  | <span class="tok-fn">sort</span> | <span class="tok-fn">uniq</span> -c | <span class="tok-fn">sort</span> -rn \</span><span class="ln">  | <span class="tok-fn">awk</span> <span class="tok-str">'$1 > 10 {print $2}'</span></span><span class="ln"></span><span class="ln"><span class="tok-cmt"># bloquear con UFW</span></span><span class="ln"><span class="tok-fn">ufw</span> deny from <span class="tok-var">$IP</span></span></div>
-        </div>
-      </div>
-
-      <h2 id="conceptos"><span class="num">§ 05</span> Conceptos clave</h2>
-      <p><strong>Separar código de configuración.</strong> Las credenciales en archivos con permisos restringidos, nunca en el script. Cada proceso hereda el entorno del usuario que lo lanza — eso explica el 80% de los problemas raros con scripts automatizados.</p>
-      <p><strong>Baseline.</strong> Saber qué es normal en un sistema es el prerequisito para identificar qué es realmente anómalo. Sin eso, cualquier proceso legítimo parece sospechoso.</p>
-
-      <h2 id="confusiones"><span class="num">§ 06</span> Lo que no entendía al principio</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Confusión</th><th>Cómo lo resolví</th></tr></thead>
-          <tbody>
-            <tr><td>Por qué excluir loopback al buscar conexiones sospechosas</td><td>El loopback es tráfico interno — nunca sale a la red</td></tr>
-            <tr><td>Por qué el mismo PID aparece dos veces en <code>ss</code></td><td>Dos file descriptors: fd=3 escucha, fd=4 mantiene la conexión</td></tr>
-            <tr><td>Por qué un virus sigue corriendo si borrás el ejecutable</td><td>El proceso ya está en RAM; usa cron para reaparecer al reiniciar</td></tr>
-            <tr><td>Por qué <code>grep</code> devolvía "fichero binario"</td><td>Ubuntu 24.04 escribe logs con partes binarias — se resuelve con <code>-a</code></td></tr>
-            <tr><td>Por qué el email funcionaba manual pero no desde cron</td><td>Cron hereda el entorno del usuario — mover a crontab de root solucionó el acceso a <code>.msmtprc</code></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h2 id="pendiente"><span class="num">§ 07</span> Pregunta pendiente</h2>
-      <p>¿Cómo hace Fail2Ban para bloquear IPs automáticamente por tiempo limitado y desbloquearlas solas sin intervención humana? Lo que armé bloquea, pero no desbloquea solo.</p>
+      <h2 id="orientacion"><span class="num">§ 01</span> Lo primero que hace un profesional: orientarse</h2>
+      <p>La idea que me ordenó todo: cuando entrás a un sistema, antes que nada preguntás quién sos y dónde estás parado. No es memorizar comandos sueltos, es una rutina.</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div><div class="code-lines"><span class="ln"><span class="tok-cmt"># quién soy y con qué privilegios</span></span><span class="ln">whoami</span><span class="ln">id</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># dónde estoy y qué sistema corre (buscar CVEs del kernel)</span></span><span class="ln">pwd</span><span class="ln">uname -a</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># ver todo, incluyendo ocultos y permisos</span></span><span class="ln">ls -la</span></div></div></div>
+      <p>Armé un mini reporte forense encadenando esto y guardándolo en un archivo. Al cuarto día me salía de memoria, que era el punto: la navegación con propósito hace que los comandos salgan solos, no memorizándolos en el vacío.</p>
+      <h2 id="carpetas"><span class="num">§ 02</span> Las carpetas que importan</h2>
+      <p>No todas las rutas valen lo mismo para seguridad. Estas son las que un atacante y un defensor miran primero:</p>
+      <div class="table-wrap"><table><thead><tr><th>Ruta</th><th>Por qué importa</th></tr></thead><tbody><tr><td><code>/etc</code></td><td>Configuración del sistema — oro para los dos lados</td></tr><tr><td><code>/etc/passwd</code></td><td>Lista de usuarios — enumeración de cuentas</td></tr><tr><td><code>/etc/shadow</code></td><td>Contraseñas hasheadas — solo root las lee</td></tr><tr><td><code>/var/log</code></td><td>Logs — detección de intrusiones</td></tr><tr><td><code>/tmp</code></td><td>Escribible por todos — los atacantes suben malware acá</td></tr><tr><td><code>/proc</code></td><td>Estado del kernel en vivo — análisis de procesos</td></tr></tbody></table></div>
+      <h2 id="permisos"><span class="num">§ 03</span> El sistema de permisos</h2>
+      <p>Cada archivo tiene tres juegos de llaves: dueño, grupo y otros. Cada uno puede leer (r), escribir (w) o ejecutar (x). Lo que me costó al principio fue el sistema octal, hasta que lo vi como una suma: <strong>r=4, w=2, x=1</strong>.</p>
+      <div class="table-wrap"><table><thead><tr><th>Notación</th><th>Octal</th><th>Uso típico</th></tr></thead><tbody><tr><td><code>-rwxr-xr-x</code></td><td>755</td><td>Scripts y binarios</td></tr><tr><td><code>-rw-r--r--</code></td><td>644</td><td>Archivos de configuración</td></tr><tr><td><code>-rw-------</code></td><td>600</td><td>Claves SSH privadas</td></tr><tr><td><code>-rwxrwxrwx</code></td><td>777</td><td>Abierto total — nunca en producción</td></tr></tbody></table></div>
+      <p>El <code>777</code> parece cómodo cuando estás probando, pero es dejar la puerta abierta con las llaves puestas: cualquiera puede reescribir el contenido. Si es un script que corre el admin, un atacante lo envenena y espera.</p>
+      <h2 id="busqueda"><span class="num">§ 04</span> Buscar lo que está mal configurado</h2>
+      <p>Estos comandos son estándar en cualquier auditoría. El <code>2&gt;/dev/null</code> descarta los errores de permiso para que no tapen los resultados útiles — me tardé en entender que el <code>2</code> es stderr y <code>/dev/null</code> es el agujero negro de Linux.</p>
+      <div class="code-block"><div class="code-head"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-file">terminal</span><span class="code-lang">bash</span></div><div class="code-body"><div class="code-gutter"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div><div class="code-lines"><span class="ln"><span class="tok-cmt"># binarios que se ejecutan como root aunque los llame otro usuario</span></span><span class="ln">find / -perm -4000 2&gt;/dev/null</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># archivos escribibles en /tmp (depósito de malware)</span></span><span class="ln">find /tmp -writable 2&gt;/dev/null</span><span class="ln"></span><span class="ln"><span class="tok-cmt"># archivos que solo root debería poder leer</span></span><span class="ln">ls -la /etc/shadow</span></div></div></div>
+      <div class="callout"><span class="callout-label">↳ Consejo del panel</span><p>El 70% de las escaladas de privilegios reales se explota por permisos mal configurados. No hay que memorizar: hay que entender el mecanismo.</p></div>
+      <h2 id="confusiones"><span class="num">§ 05</span> Lo que no entendía al principio</h2>
+      <div class="table-wrap"><table><thead><tr><th>Confusión</th><th>Cómo lo resolví</th></tr></thead><tbody><tr><td>Por qué el sistema usa números para los permisos</td><td>Es una suma: r=4, w=2, x=1 por cada grupo (dueño/grupo/otros)</td></tr><tr><td>Qué hace <code>2&gt;/dev/null</code> al final de <code>find</code></td><td>Manda los errores de 'permiso denegado' a la basura y deja solo lo útil</td></tr><tr><td>Por qué <code>/etc/passwd</code> es legible por todos si tiene los usuarios</td><td>El sistema lo necesita; las contraseñas reales están aparte en <code>/etc/shadow</code></td></tr><tr><td>Por qué <code>rm</code> no pregunta y no hay papelera</td><td>En Linux <code>rm</code> es irreversible — se aprende a la mala una vez</td></tr></tbody></table></div>
+      <h2 id="profesional"><span class="num">§ 06</span> Conexión con el mundo profesional</h2>
+      <p>La orientación (<code>whoami</code>, <code>id</code>, <code>uname</code>, <code>ls -la</code>) es el arranque de cualquier triaje real. Y la búsqueda de permisos peligrosos es un paso fijo tanto en una auditoría defensiva como en la post-explotación de un pentest. Los mismos comandos, distinta intención.</p>
+      <h2 id="pendiente"><span class="num">§ 07</span> Pregunta pendiente y próximo paso</h2>
+      <p>Me quedó la duda de por qué un binario como <code>passwd</code> puede escribir en <code>/etc/shadow</code> si yo no puedo — y eso es exactamente el bit SUID, el tema de la semana siguiente.</p>
 
       <div class="sign-off">— fv</div>
     </div>
@@ -271,8 +212,8 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
 </div>
 
 <div class="week-nav">
-  <a href="semana-05.html">← Semana 05 · Correlación de procesos y red</a>
-  <a href="semana-07.html">Semana 07 · Fail2Ban y forense web →</a>
+  <a href="semana-01.html">← Semana 01 · Redes y protocolos</a>
+  <a href="semana-03.html">Semana 03 · SUID y escalada →</a>
 </div>
 
 <footer>
